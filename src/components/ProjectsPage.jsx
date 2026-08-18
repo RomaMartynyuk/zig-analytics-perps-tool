@@ -30,14 +30,14 @@ export default function ProjectsPage() {
               </div>
             </div>
             <span className="row-value">
-              {p.tvlData ? formatUSD(p.tvlData.tvl) : <span className="manual-tag">Manual</span>}
+              {p.tvlData ? formatUSD(p.tvlData.tvl) : <span className="manual-tag">NaN</span>}
             </span>
           </>
         )}
       />
 
       <p className="page-note">
-        TVL pulled live from DeFiLlama. Projects marked "Manual" aren't indexed
+        TVL pulled live from DeFiLlama. Projects showing "NaN" aren't indexed
         there yet — expected for new / invite-only protocols, tracked by hand
         until they are.
       </p>
