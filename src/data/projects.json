@@ -1,0 +1,24 @@
+[
+  { "name": "QFEX", "category": "RWA Perps", "tier": 1, "defillama_slug": "qfex", "slug_verified": false, "points_status": "live", "notes": "Invite only — limited codes" },
+  { "name": "TxFlow", "category": "Infra", "tier": 1, "defillama_slug": "txflow", "slug_verified": false, "points_status": "not_live", "notes": "Points program not live yet, referral: TXPHILA" },
+  { "name": "TrueNorth", "category": "AI + Trading", "tier": 1, "defillama_slug": "truenorth", "slug_verified": false, "points_status": "retro_confirmed", "notes": "Retro confirmed" },
+  { "name": "Bulktrade", "category": "Perps (pre-deposit)", "tier": 1, "defillama_slug": "bulktrade", "slug_verified": false, "points_status": "live", "notes": "Pre-deposit, no trading fees needed. ~$25.9M pre-deposit TVL reported (SolanaFloor) — slug not yet matched to a live DefiLlama page" },
+  { "name": "TrueCurrentX", "category": "Perps", "tier": 1, "defillama_slug": "truecurrentx", "slug_verified": false, "points_status": "not_live", "notes": "No points campaign yet, high risk/reward" },
+  { "name": "Arcus", "category": "Perps + Spot", "tier": 1, "defillama_slug": "arcus", "slug_verified": true, "points_status": "not_live", "notes": "Built by ex-dYdX team w/ Robinhood Crypto, on Robinhood Chain. TVL confirmed live on DefiLlama (~$20M)" },
+
+  { "name": "Perpl", "category": "Perps", "tier": 2, "defillama_slug": "perpl", "slug_verified": true, "points_status": "live", "notes": "On Monad L1. TVL confirmed live on DefiLlama (~$7M)" },
+  { "name": "Rise", "category": "Perps", "tier": 2, "defillama_slug": "risex", "slug_verified": true, "points_status": "live", "notes": "Team goes by RISEx on-chain. Built on RISE Chain (Ethereum L2). TVL confirmed live on DefiLlama (~$15M). No public security audit as of writing" },
+  { "name": "TreadFi", "category": "Perps", "tier": 2, "defillama_slug": "tread.fi-perps", "slug_verified": true, "points_status": "running", "notes": "Use organically while interacting with other projects. Note the dot in the DefiLlama slug" },
+  { "name": "Variational", "category": "Perps", "tier": 2, "defillama_slug": "variational", "slug_verified": true, "points_status": "running", "notes": "Obsess over lowering cost per point" },
+  { "name": "TradeHotStuff", "category": "Perps", "tier": 2, "defillama_slug": "hotstuff", "slug_verified": false, "points_status": "running", "notes": "Relatively young, mixed long-term outlook. Listed as 'Hotstuff' on some trackers — slug is a best guess" },
+  { "name": "Meridian", "category": "Perps (migrating)", "tier": 2, "defillama_slug": "meridian", "slug_verified": false, "points_status": "watch", "notes": "Migrating to Robinhood chain, points may favor new users" },
+
+  { "name": "Pacifica", "category": "Perps", "tier": 3, "defillama_slug": "pacifica", "slug_verified": true, "points_status": "late_stage", "notes": "Confirmed live on DefiLlama" },
+  { "name": "Nado", "category": "Perps + Spot", "tier": 3, "defillama_slug": "nado", "slug_verified": true, "points_status": "late_stage", "notes": "On Ink chain. Parent protocol aggregating Nado Spot + Nado Perps, confirmed live on DefiLlama" },
+  { "name": "Hibachi", "category": "Perps", "tier": 3, "defillama_slug": "hibachi", "slug_verified": true, "points_status": "late_stage", "notes": "ZK-secured perps. Confirmed live on DefiLlama" },
+  { "name": "GMTrade", "category": "Perps", "tier": 3, "defillama_slug": "gmtrade", "slug_verified": true, "points_status": "late_stage", "notes": "On Solana, crypto + RWA markets. Confirmed live on DefiLlama, top-10 derivatives by TVL" },
+  { "name": "N1", "category": "Chain", "tier": 3, "defillama_slug": null, "slug_verified": false, "points_status": "late_stage", "notes": "N1 is a chain (powers 01.xyz, invite-only testnet), not a single protocol — TVL doesn't map to the /protocol endpoint used here" },
+  { "name": "StandX", "category": "Perps", "tier": 3, "defillama_slug": "standx-perps", "slug_verified": true, "points_status": "late_stage", "notes": "On Solana + BNB Chain, DUSD-margined. Confirmed live on DefiLlama" },
+  { "name": "Ostium", "category": "Perps (RWA)", "tier": 3, "defillama_slug": "ostium", "slug_verified": true, "points_status": "late_stage", "notes": "On Arbitrum. Confirmed live on DefiLlama. Had an oracle-exploit incident (~$18-23M) on Jul 15, 2026 — worth watching before farming here" }
+]
+

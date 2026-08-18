@@ -1,0 +1,35 @@
+:root {
+  /* base surfaces — sampled from the approved homepage mockup */
+  --bg: #E6E0D3;
+  --card: #FEFCF8;
+  --card-tint: #F1EBDD;
+  --line: #E3DDCF;
+
+  /* text */
+  --ink: #1B1B1F;
+  --ink-soft: #6B6559;
+  --ink-faint: #A39D8F;
+
+  /* chrome */
+  --sidebar: #18181C;
+  --sidebar-ink: #FEFCF8;
+
+  /* semantic */
+  --up: #3FB56B;
+  --down: #E45B4E;
+
+  /* project-icon accent palette (cycled per project) */
+  --accent-1: #2F5D8A;
+  --accent-2: #6D2932;
+  --accent-3: #3F7D5C;
+  --accent-4: #8A5A2F;
+  --accent-5: #5A4B8A;
+
+  --radius-xl: 28px;
+  --radius-lg: 22px;
+  --radius-md: 14px;
+  --radius-sm: 10px;
+
+  --shadow-card: 0 2px 14px rgba(27, 27, 31, 0.05);
+  --shadow-sidebar: 0 8px 24px rgba(27, 27, 31, 0.18);
+}
