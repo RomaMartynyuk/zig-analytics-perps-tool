@@ -26,12 +26,12 @@ import './App.css';
 function StatGrid() {
   const { data, loading, error } = useDerivativesData();
 
-  // Live data still loading or unavailable (e.g. running `vite dev` locally
-  // without `vercel dev` — see README) — show placeholders instead of
-  // breaking the layout, clearly marked so it's never mistaken for real data.
+  // Live data still loading, request failed, or this specific card's value
+  // is genuinely unavailable (e.g. 7d/30d volume — see api/derivatives.js
+  // for why those are null on purpose) — show NaN rather than a fake number.
   const v = data?.volume;
   const oi = data?.openInterest;
-  const noData = !loading && (error || !data);
+  const requestFailed = !loading && (error || !data);
 
   return (
     <div className="stat-grid">
@@ -40,28 +40,28 @@ function StatGrid() {
         value={v?.h24}
         change={v?.h24_change}
         loading={loading}
-        unavailable={noData}
+        unavailable={requestFailed || v?.h24 == null}
       />
       <StatCard
         label="Perp Volume (7d)"
         value={v?.d7}
         change={v?.d7_change}
         loading={loading}
-        unavailable={noData}
+        unavailable={requestFailed || v?.d7 == null}
       />
       <StatCard
         label="Perp Volume (30d)"
         value={v?.d30}
         change={v?.d30_change}
         loading={loading}
-        unavailable={noData}
+        unavailable={requestFailed || v?.d30 == null}
       />
       <StatCard
         label="Open Interest"
         value={oi?.current}
         change={null}
         loading={loading}
-        unavailable={noData}
+        unavailable={requestFailed || oi?.current == null}
       />
     </div>
   );

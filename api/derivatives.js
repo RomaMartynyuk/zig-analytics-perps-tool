@@ -1,95 +1,133 @@
-// Vercel Serverless Function — proxies + aggregates DefiLlama's derivatives
-// (perp volume) and open-interest overview endpoints, server-side (same
-// CORS reasoning as /api/tvl.js).
+// Vercel Serverless Function — aggregate Perp Volume (24h) + Open Interest
+// across the tracked-project list.
 //
-// DefiLlama's derivatives "module" naming doesn't always match the
-// "defillama_slug" we use for TVL (/protocol/{slug}) — volume/OI adapters
-// are listed separately from TVL adapters, so coverage here is a SUBSET of
-// the full tracked-project list. We match case-insensitively on name OR
-// module against our own project names to catch as many as reasonably
-// possible, and report how many matched so the UI can be honest about it.
+// IMPORTANT — why this looks the way it does:
+// DeFiLlama's Derivatives (perp volume) data — both the /overview/derivatives
+// endpoint AND the per-protocol /v2/chart/derivatives/protocol/{slug} chart —
+// is Pro-only ($300/mo, confirmed against DefiLlama's own pricing docs and
+// several independent sources). It is NOT available on the free api.llama.fi
+// tier, no matter which URL shape is used. So for volume we go straight to
+// each exchange's own public API instead (per the research doc), one small
+// adapter per exchange. Open Interest DOES have a free DefiLlama endpoint
+// (/overview/open-interest) and is used as-is below, with STRICT exact-name
+// matching (not fuzzy substring) to avoid accidentally summing in unrelated
+// protocols — an earlier version of this file used loose .includes()
+// matching and produced an inflated, meaningless total.
 //
-// GET /api/derivatives -> { volume: {...}, openInterest: {...}, matched, total }
+// 7d/30d volume: genuinely not available from a single live API call for
+// almost any of these exchanges (they mostly expose rolling 24h stats only).
+// Getting real 7d/30d requires accumulating our own daily snapshots over
+// time — that's Month 2 infra (the WoW snapshot pipeline already in the
+// roadmap), not something this endpoint can fake honestly today. Returned
+// as null on purpose so the UI shows "NaN" instead of a made-up number.
 
-// Keep this self-contained (no cross-import of src/data/projects.json) so
-// the function bundles cleanly regardless of Vercel's module resolution.
-const TRACKED_NAMES = [
-  'qfex', 'txflow', 'truenorth', 'bulktrade', 'arcus', 'perpl', 'rise', 'risex',
-  'treadfi', 'tread.fi', 'variational', 'hotstuff', 'tradehotstuff', 'meridian',
-  'ethereal', 'pacifica', 'nado', 'hibachi', 'gmtrade', '01 exchange', 'n1',
-  'standx', 'ostium', 'hyperliquid', 'apex protocol', 'apex omni', 'lighter',
-  'aster', 'edgex', 'grvt', 'extended', 'ondo finance', 'ondo', 'antarctic',
-  'vest markets', 'vest exchange', 'jupiter', 'reya', 'sunperp', 'sun',
-  'synfutures', 'gains network', 'phoenix', 'sosovalue', 'upscale',
-  'orderly', 'decibel',
+const TRACKED_OI_NAMES = [
+  'hyperliquid', 'aster', 'lighter', 'edgex', 'variational', 'reya',
+  'pacifica', 'nado', 'grvt', 'extended', 'decibel', 'hibachi', 'standx',
+  'ostium', 'apex protocol', 'apex omni', 'jupiter perpetual exchange',
+  'jupiter', 'synfutures', 'gains network', 'gtrade', 'orderly',
+  'vest markets', 'vest exchange', 'gmtrade', 'ethereal', 'rise', 'risex',
 ];
 
-function isTracked(protocol) {
-  const candidates = [protocol.name, protocol.displayName, protocol.module]
-    .filter(Boolean)
-    .map((s) => s.toLowerCase().trim());
-  return TRACKED_NAMES.some((tracked) =>
-    candidates.some((c) => c === tracked || c.includes(tracked) || tracked.includes(c))
-  );
-}
-
-async function fetchOverview(type) {
-  const res = await fetch(
-    `https://api.llama.fi/overview/${type}?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true`
-  );
+async function fetchJSON(url, options) {
+  const res = await fetch(url, options);
   if (!res.ok) return null;
   return res.json();
 }
 
-function sumField(protocols, field) {
-  return protocols.reduce((sum, p) => sum + (Number(p[field]) || 0), 0);
+// --- Direct-exchange 24h volume adapters -----------------------------
+
+async function hyperliquidVolume24h() {
+  const data = await fetchJSON('https://api.hyperliquid.xyz/info', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'metaAndAssetCtxs' }),
+  });
+  const assetCtxs = data?.[1];
+  if (!Array.isArray(assetCtxs)) return null;
+  return assetCtxs.reduce((sum, ctx) => sum + (Number(ctx.dayNtlVlm) || 0), 0);
 }
 
-function pctChange(current, previous) {
-  if (!previous) return null;
-  return ((current - previous) / previous) * 100;
+async function asterVolume24h() {
+  const data = await fetchJSON('https://fapi.asterdex.com/fapi/v1/ticker/24hr');
+  if (!Array.isArray(data)) return null;
+  return data.reduce((sum, t) => sum + (Number(t.quoteVolume) || 0), 0);
+}
+
+// Adapter registry — add more exchanges here as they're verified.
+// Each entry: [displayName, asyncFn returning a USD number or null]
+const VOLUME_ADAPTERS = [
+  ['Hyperliquid', hyperliquidVolume24h],
+  ['Aster', asterVolume24h],
+];
+
+async function aggregateVolume24h() {
+  const results = await Promise.allSettled(VOLUME_ADAPTERS.map(([, fn]) => fn()));
+
+  let total = 0;
+  const sources = [];
+  results.forEach((r, i) => {
+    const [name] = VOLUME_ADAPTERS[i];
+    if (r.status === 'fulfilled' && typeof r.value === 'number') {
+      total += r.value;
+      sources.push({ name, ok: true });
+    } else {
+      sources.push({ name, ok: false });
+    }
+  });
+
+  const anySucceeded = sources.some((s) => s.ok);
+  return { total: anySucceeded ? total : null, sources };
+}
+
+// --- Open Interest (free DefiLlama endpoint, strict exact matching) --
+
+async function aggregateOpenInterest() {
+  const data = await fetchJSON(
+    'https://api.llama.fi/overview/open-interest?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true'
+  );
+  const protocols = data?.protocols || [];
+
+  const matched = protocols.filter((p) => {
+    const candidates = [p.name, p.displayName, p.module]
+      .filter(Boolean)
+      .map((s) => s.toLowerCase().trim());
+    return candidates.some((c) => TRACKED_OI_NAMES.includes(c));
+  });
+
+  const valueField = matched[0]?.total24h != null ? 'total24h' : 'openInterestAtEnd';
+  const current = matched.reduce((sum, p) => sum + (Number(p[valueField]) || 0), 0);
+
+  return { current: matched.length ? current : null, matchedCount: matched.length };
 }
 
 export default async function handler(req, res) {
   try {
-    const [derivatives, openInterest] = await Promise.all([
-      fetchOverview('derivatives'),
-      fetchOverview('open-interest'),
+    const [volume, openInterest] = await Promise.all([
+      aggregateVolume24h(),
+      aggregateOpenInterest(),
     ]);
 
-    const volProtocols = (derivatives?.protocols || []).filter(isTracked);
-    const oiProtocols = (openInterest?.protocols || []).filter(isTracked);
-
-    const total24h = sumField(volProtocols, 'total24h');
-    const total48hto24h = sumField(volProtocols, 'total48hto24h');
-    const total7d = sumField(volProtocols, 'total7d');
-    const total14dto7d = sumField(volProtocols, 'total14dto7d');
-    const total30d = sumField(volProtocols, 'total30d');
-    const total60dto30d = sumField(volProtocols, 'total60dto30d');
-
-    // Open interest is a point-in-time snapshot, not a period total — use
-    // whichever current-value field the endpoint actually returns.
-    const oiCurrent = sumField(
-      oiProtocols,
-      oiProtocols[0]?.total24h != null ? 'total24h' : 'openInterestAtEnd'
-    );
-
-    res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=3600');
+    res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=1800');
     return res.status(200).json({
       volume: {
-        h24: total24h,
-        h24_change: pctChange(total24h, total48hto24h),
-        d7: total7d,
-        d7_change: pctChange(total7d, total14dto7d),
-        d30: total30d,
-        d30_change: pctChange(total30d, total60dto30d),
+        h24: volume.total,
+        h24_change: null, // no prior-24h comparison point yet — see note above
+        d7: null,
+        d7_change: null,
+        d30: null,
+        d30_change: null,
       },
       openInterest: {
-        current: oiCurrent,
+        current: openInterest.current,
       },
-      matched: { volume: volProtocols.length, openInterest: oiProtocols.length },
+      meta: {
+        volumeSources: volume.sources,
+        openInterestMatched: openInterest.matchedCount,
+        note: '24h volume = direct exchange APIs (Hyperliquid + Aster only so far — see research doc for the rest). 7d/30d need historical snapshots, not implemented yet. Open Interest = DefiLlama /overview/open-interest, free tier, exact-name matched.',
+      },
     });
   } catch (err) {
-    return res.status(502).json({ error: 'Upstream fetch failed' });
+    return res.status(502).json({ error: 'Aggregation failed' });
   }
 }
