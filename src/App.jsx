@@ -13,8 +13,8 @@ import ProjectsPage from './components/ProjectsPage';
 import ProjectIcon from './components/ProjectIcon';
 
 import { formatUSD, formatPercent } from './lib/format';
+import { useDerivativesData } from './hooks/useDerivativesData';
 import {
-  statCards,
   perpVolumeRanking,
   openInterestRanking,
   upcomingSnapshots,
@@ -23,14 +23,54 @@ import {
 
 import './App.css';
 
+function StatGrid() {
+  const { data, loading, error } = useDerivativesData();
+
+  // Live data still loading or unavailable (e.g. running `vite dev` locally
+  // without `vercel dev` — see README) — show placeholders instead of
+  // breaking the layout, clearly marked so it's never mistaken for real data.
+  const v = data?.volume;
+  const oi = data?.openInterest;
+  const noData = !loading && (error || !data);
+
+  return (
+    <div className="stat-grid">
+      <StatCard
+        label="Perp Volume (24h)"
+        value={v?.h24}
+        change={v?.h24_change}
+        loading={loading}
+        unavailable={noData}
+      />
+      <StatCard
+        label="Perp Volume (7d)"
+        value={v?.d7}
+        change={v?.d7_change}
+        loading={loading}
+        unavailable={noData}
+      />
+      <StatCard
+        label="Perp Volume (30d)"
+        value={v?.d30}
+        change={v?.d30_change}
+        loading={loading}
+        unavailable={noData}
+      />
+      <StatCard
+        label="Open Interest"
+        value={oi?.current}
+        change={null}
+        loading={loading}
+        unavailable={noData}
+      />
+    </div>
+  );
+}
+
 function Dashboard() {
   return (
     <>
-      <div className="stat-grid">
-        {statCards.map((s) => (
-          <StatCard key={s.label} {...s} />
-        ))}
-      </div>
+      <StatGrid />
 
       <div className="row-3col">
         <ChartCard />

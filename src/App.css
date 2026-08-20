@@ -212,6 +212,23 @@
 .stat-change.down {
   color: var(--down);
 }
+.stat-nan {
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------- skeleton loading ---------------- */
+.skeleton-line {
+  display: inline-block;
+  background: linear-gradient(90deg, var(--card-tint) 25%, var(--line) 50%, var(--card-tint) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 6px;
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
 
 /* ---------------- 3-col rows ---------------- */
 .row-3col {
