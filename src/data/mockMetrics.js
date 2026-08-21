@@ -19,13 +19,6 @@ export const statCards = [
   { label: 'Open Interest', value: 17.107e9, change: -1.05 },
 ];
 
-export const openInterestRanking = projects
-  .map((p, i) => ({
-    ...p,
-    value: seededValue(p.name + 'oi', 1e6, 90e6),
-  }))
-  .sort((a, b) => b.value - a.value);
-
 export const upcomingSnapshots = projects
   .filter((p) => p.points_status === 'live' || p.points_status === 'running')
   .map((p) => ({

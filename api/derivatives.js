@@ -202,12 +202,46 @@ async function aggregateVolume24h() {
 }
 
 // --- Open Interest (free DefiLlama endpoint, strict exact matching) ------
+//
+// Maps each of our 20 tracked exchanges to the alias(es) DefiLlama might
+// use for its name/displayName/module field. Exact match only (not fuzzy
+// substring) — an earlier version used loose .includes() matching and
+// produced an inflated, meaningless total by catching unrelated protocols.
+// Canonical key = display name used in the ranking UI.
 
-const TRACKED_OI_NAMES = [
-  'hyperliquid', 'aster', 'lighter', 'edgex', 'variational', 'reya',
-  'pacifica', 'nado', 'grvt', 'extended', 'decibel', 'hibachi', 'standx',
-  'apex protocol', 'gmtrade', 'rise', 'risex',
-];
+const OI_ALIASES = {
+  Hyperliquid: ['hyperliquid'],
+  Aster: ['aster'],
+  Lighter: ['lighter'],
+  edgeX: ['edgex'],
+  Variational: ['variational'],
+  Reya: ['reya'],
+  Pacifica: ['pacifica'],
+  Nado: ['nado'],
+  Grvt: ['grvt'],
+  Extended: ['extended'],
+  Decibel: ['decibel'],
+  Hibachi: ['hibachi'],
+  StandX: ['standx'],
+  GMTrade: ['gmtrade'],
+  Rise: ['rise', 'risex'],
+  QFEX: ['qfex'],
+  TrueNorth: ['truenorth'],
+  TradeHotStuff: ['hotstuff', 'tradehotstuff'],
+  N1: ['n1', '01 exchange', '01exchange'],
+  Arcus: ['arcus'],
+};
+
+function resolveCanonicalName(protocol) {
+  const candidates = [protocol.name, protocol.displayName, protocol.module]
+    .filter(Boolean)
+    .map((s) => s.toLowerCase().trim());
+
+  for (const [canonical, aliases] of Object.entries(OI_ALIASES)) {
+    if (aliases.some((alias) => candidates.includes(alias))) return canonical;
+  }
+  return null;
+}
 
 async function aggregateOpenInterest() {
   const data = await fetchJSON(
@@ -215,17 +249,19 @@ async function aggregateOpenInterest() {
   );
   const protocols = data?.protocols || [];
 
-  const matched = protocols.filter((p) => {
-    const candidates = [p.name, p.displayName, p.module]
-      .filter(Boolean)
-      .map((s) => s.toLowerCase().trim());
-    return candidates.some((c) => TRACKED_OI_NAMES.includes(c));
-  });
+  const valueField = protocols[0]?.total24h != null ? 'total24h' : 'openInterestAtEnd';
 
-  const valueField = matched[0]?.total24h != null ? 'total24h' : 'openInterestAtEnd';
-  const current = matched.reduce((sum, p) => sum + (Number(p[valueField]) || 0), 0);
+  const sources = [];
+  let current = 0;
+  for (const p of protocols) {
+    const canonical = resolveCanonicalName(p);
+    if (!canonical) continue;
+    const value = Number(p[valueField]) || 0;
+    sources.push({ name: canonical, ok: true, value });
+    current += value;
+  }
 
-  return { current: matched.length ? current : null, matchedCount: matched.length };
+  return { current: sources.length ? current : null, matchedCount: sources.length, sources };
 }
 
 export default async function handler(req, res) {
@@ -250,8 +286,9 @@ export default async function handler(req, res) {
       },
       meta: {
         volumeSources: volume.sources,
+        openInterestSources: openInterest.sources,
         openInterestMatched: openInterest.matchedCount,
-        note: '24h volume = 5 confirmed direct exchange APIs (Hyperliquid, Aster, Pacifica, Variational, Decibel); 11 more have adapter slots but are stubbed pending endpoint verification (see comments); TrueNorth/N1/GMTrade/Arcus excluded per research doc. 7d/30d need historical snapshots, not implemented yet.',
+        note: '24h volume = 5 confirmed direct exchange APIs (Hyperliquid, Aster, Pacifica, Variational, Decibel); 11 more have adapter slots but are stubbed pending endpoint verification (see comments); TrueNorth/N1/GMTrade/Arcus excluded from volume per research doc (still eligible for OI matching above, since that comes from DefiLlama, not a direct exchange call). 7d/30d volume needs historical snapshots, not implemented yet.',
       },
     });
   } catch (err) {

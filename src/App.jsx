@@ -14,7 +14,7 @@ import ProjectIcon from './components/ProjectIcon';
 
 import { formatUSD, formatPercent } from './lib/format';
 import { useDerivativesData } from './hooks/useDerivativesData';
-import { openInterestRanking, upcomingSnapshots, lastTickers } from './data/mockMetrics';
+import { upcomingSnapshots, lastTickers } from './data/mockMetrics';
 
 import './App.css';
 
@@ -78,6 +78,20 @@ function Dashboard() {
     ? `${volumeRanking.length} of 20 live`
     : 'No data yet';
 
+  // Same pattern for Open Interest — real per-exchange breakdown from the
+  // same /api/derivatives call, sorted high to low, only successfully
+  // matched exchanges shown (see api/derivatives.js: DefiLlama's free
+  // /overview/open-interest endpoint, exact-name matched against our 20).
+  const oiRanking = (data?.meta?.openInterestSources || [])
+    .filter((s) => s.ok && typeof s.value === 'number')
+    .sort((a, b) => b.value - a.value);
+
+  const oiTabLabel = loading
+    ? 'Loading…'
+    : oiRanking.length
+    ? `${oiRanking.length} of 20 live`
+    : 'No data yet';
+
   return (
     <>
       <StatGrid data={data} loading={loading} error={error} />
@@ -128,7 +142,13 @@ function Dashboard() {
 
         <RankingList
           title="Open Interest Ranking"
-          items={openInterestRanking}
+          tabLabel={oiTabLabel}
+          items={oiRanking}
+          emptyMessage={
+            loading
+              ? 'Loading live open interest…'
+              : "No live OI data yet — this needs a real deploy, `vite dev` can't reach /api routes."
+          }
           renderRow={(p, i) => (
             <>
               <div className="row-left">
