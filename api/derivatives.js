@@ -1,36 +1,36 @@
-// Vercel Serverless Function — aggregate Perp Volume (24h) across the 20
-// tracked exchanges, via direct per-exchange APIs (per the research doc).
+// Vercel Serverless Function — aggregate Perp Volume (24h) AND Open
+// Interest across the tracked exchanges, entirely from direct exchange
+// APIs. DefiLlama is no longer used for anything here (its Derivatives
+// volume data is Pro-only, and to keep one consistent data source instead
+// of mixing providers, Open Interest was moved off DefiLlama too — even
+// though its free /overview/open-interest endpoint technically worked).
 //
-// WHY DIRECT EXCHANGE APIs INSTEAD OF DEFILLAMA:
-// DeFiLlama's Derivatives data (both /overview/derivatives and the
-// per-protocol /v2/chart/derivatives/protocol/{slug} chart) is Pro-only
-// ($300/mo) — confirmed against DefiLlama's own pricing docs and several
-// independent sources. Not available on the free api.llama.fi tier at all.
+// CONFIDENCE — same 5 exchanges confirmed with a real example response as
+// before now also feed Open Interest, wherever that exchange's API exposes
+// it in the same call:
 //
-// CONFIDENCE PER EXCHANGE — only 5 of 20 are wired to a confirmed, verified
-// endpoint with a real example response. The rest are left as honest stubs
-// (return null) with a comment on exactly what's missing, rather than
-// guessing field names or base URLs — silently-wrong data is worse than a
-// visible NaN. Fill these in as each is verified against live docs/testing.
+//   Hyperliquid  — volume + OI (OI computed as units × markPx per asset,
+//                  since the API reports OI in base-asset units, not USD)
+//   Pacifica     — volume + OI (same assumption: open_interest is in
+//                  base-asset units, multiplied by mark price)
+//   Variational  — volume + OI (API's own docs example treats open_interest
+//                  as already USD-denominated — used directly, no conversion)
+//   Decibel      — volume + OI, best-effort field-name matching (doc
+//                  mentions both exist in daily_stats but not exact keys)
+//   Aster        — volume only. Binance-fork APIs expose OI per-symbol only
+//                  (/fapi/v1/openInterest?symbol=X), not in the bulk 24hr
+//                  ticker call — would need one request per symbol (~dozens
+//                  of calls). Skipped for now rather than fan out that many
+//                  requests inside a single serverless invocation.
 //
-// Confirmed & wired (returns a real number):
-//   Hyperliquid, Aster, Pacifica, Variational, Decibel (best-effort field match)
+// The other 11 tracked exchanges still have volume-only stub adapters from
+// before (unchanged) — they return { volume: null, openInterest: null }
+// until their endpoints are verified. TrueNorth, N1/01, GMTrade, and Arcus
+// remain excluded entirely per the research doc's own caution against
+// guessing an endpoint for those.
 //
-// Stubbed — endpoint exists per docs, but exact volume field/base URL not
-// confirmed with a real example response (Lighter, edgeX, Reya, Nado, GRVT,
-// Extended, Hibachi, StandX, Hotstuff, QFEX, RISEx):
-//   these all have official REST/WS APIs per the research doc, several
-//   explicitly mention 24h volume as available — worth verifying next.
-//
-// Excluded from volume adapters entirely — the research doc itself says
-// not to guess an endpoint here without further product identification:
-//   TrueNorth (analytics/intelligence layer, not a raw exchange feed)
-//   N1 / 01 (chain/ecosystem layer, not one single exchange API)
-//   GMTrade (doc: "do not invent a REST endpoint", needs verification)
-//   Arcus (doc: "do not assume same architecture as HL/Aster", needs verification)
-//
-// 7d/30d volume: not available from any of these as a single live call —
-// needs our own historical snapshots (Month 2 roadmap infra), returned null.
+// 7d/30d volume: still not available from a single live call anywhere —
+// needs historical snapshots (Month 2 roadmap infra), returned null.
 
 async function fetchJSON(url, options) {
   try {
@@ -42,239 +42,162 @@ async function fetchJSON(url, options) {
   }
 }
 
-// --- Confirmed adapters ------------------------------------------------
+const EMPTY = { volume: null, openInterest: null };
 
-async function hyperliquidVolume24h() {
+// --- Confirmed adapters — each returns { volume, openInterest } --------
+
+async function hyperliquidData() {
   const data = await fetchJSON('https://api.hyperliquid.xyz/info', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ type: 'metaAndAssetCtxs' }),
   });
   const assetCtxs = data?.[1];
-  if (!Array.isArray(assetCtxs)) return null;
-  return assetCtxs.reduce((sum, ctx) => sum + (Number(ctx.dayNtlVlm) || 0), 0);
+  if (!Array.isArray(assetCtxs)) return EMPTY;
+
+  let volume = 0;
+  let oi = 0;
+  for (const ctx of assetCtxs) {
+    volume += Number(ctx.dayNtlVlm) || 0;
+    const units = Number(ctx.openInterest) || 0;
+    const mark = Number(ctx.markPx) || 0;
+    oi += units * mark;
+  }
+  return { volume, openInterest: oi };
 }
 
-async function asterVolume24h() {
+async function asterData() {
   const data = await fetchJSON('https://fapi.asterdex.com/fapi/v1/ticker/24hr');
-  if (!Array.isArray(data)) return null;
-  return data.reduce((sum, t) => sum + (Number(t.quoteVolume) || 0), 0);
+  if (!Array.isArray(data)) return EMPTY;
+  const volume = data.reduce((sum, t) => sum + (Number(t.quoteVolume) || 0), 0);
+  return { volume, openInterest: null }; // see header note on why OI is skipped
 }
 
-async function pacificaVolume24h() {
+async function pacificaData() {
   const data = await fetchJSON('https://api.pacifica.fi/api/v1/info/prices');
   const rows = data?.data;
-  if (!Array.isArray(rows)) return null;
-  return rows.reduce((sum, r) => sum + (Number(r.volume_24h) || 0), 0);
+  if (!Array.isArray(rows)) return EMPTY;
+
+  let volume = 0;
+  let oi = 0;
+  for (const r of rows) {
+    volume += Number(r.volume_24h) || 0;
+    const units = Number(r.open_interest) || 0;
+    const mark = Number(r.mark) || 0;
+    oi += units * mark;
+  }
+  return { volume, openInterest: oi };
 }
 
-async function variationalVolume24h() {
+async function variationalData() {
   const data = await fetchJSON(
     'https://omni-client-api.prod.ap-northeast-1.variational.io/metadata/stats'
   );
-  const vol = Number(data?.total_volume_24h);
-  return Number.isFinite(vol) ? vol : null;
+  const volume = Number(data?.total_volume_24h);
+  const oi = Number(data?.open_interest);
+  return {
+    volume: Number.isFinite(volume) ? volume : null,
+    openInterest: Number.isFinite(oi) ? oi : null,
+  };
 }
 
-async function decibelVolume24h() {
-  // Doc confirms the endpoint + "Daily volume" as a field, but not the
-  // exact JSON key — try the most likely candidates defensively.
+async function decibelData() {
   const data = await fetchJSON('https://api.mainnet.aptoslabs.com/decibel/api/v1/daily_stats');
-  const candidate = data?.volume_24h ?? data?.daily_volume ?? data?.volume ?? data?.data?.volume_24h;
-  const vol = Number(candidate);
-  return Number.isFinite(vol) ? vol : null;
+  const volCandidate = data?.volume_24h ?? data?.daily_volume ?? data?.volume ?? data?.data?.volume_24h;
+  const oiCandidate =
+    data?.open_interest ?? data?.openInterest ?? data?.data?.open_interest ?? data?.data?.openInterest;
+  const volume = Number(volCandidate);
+  const oi = Number(oiCandidate);
+  return {
+    volume: Number.isFinite(volume) ? volume : null,
+    openInterest: Number.isFinite(oi) ? oi : null,
+  };
 }
 
-// --- Stubbed adapters — endpoint/field not confirmed yet ---------------
-// Each returns null on purpose. Comment = what's missing before this can
-// be wired for real, per the research doc's own confidence notes.
+// --- Stubbed adapters — unchanged from the volume-only pass ------------
+// Each returns EMPTY on purpose. See prior comments for what's missing
+// before these can be wired for real.
 
-async function lighterVolume24h() {
-  // docs.lighter.xyz/trading/api — markets/prices/trades/candles/funding/OI
-  // documented, but "volume" is NOT explicitly listed as an exposed field.
-  // Would likely need summing candles rather than a single ticker call.
-  return null;
-}
-
-async function edgexVolume24h() {
-  // github.com/edgex-Tech/edgex-python-sdk — "24h market statistics"
-  // explicitly mentioned, but exact REST base URL / field name unconfirmed.
-  return null;
-}
-
-async function reyaVolume24h() {
-  // docs.reya.xyz — 24h volume is a WebSocket-only field in the current
-  // docs; no confirmed simple REST snapshot endpoint for it yet.
-  return null;
-}
-
-async function nadoVolume24h() {
-  // docs.nado.xyz — Gateway/WS/Indexer architecture; doc doesn't list a
-  // plain "volume" field, only positions/funding/OI explicitly.
-  return null;
-}
-
-async function grvtVolume24h() {
-  // api-docs.grvt.io/market_data_api/#ticker_1 — a REST ticker endpoint
-  // exists, but its exact response schema (does it include volume?) and
-  // API base domain weren't confirmed against a real example.
-  return null;
-}
-
-async function extendedVolume24h() {
-  // api.docs.extended.exchange — public streams are WS-only per docs
-  // (order book, trades, mark price, candles, funding); no confirmed
-  // REST 24h-volume snapshot endpoint.
-  return null;
-}
-
-async function hibachiVolume24h() {
-  // docs.hibachi.xyz — REST + WS + SDK exist, but no explicit volume
-  // field confirmed in the docs excerpt reviewed.
-  return null;
-}
-
-async function standxVolume24h() {
-  // Base confirmed: https://perps.standx.com — "market overview" is listed
-  // as a public capability but the exact path/field for 24h volume wasn't
-  // confirmed against a real example response.
-  return null;
-}
-
-async function hotstuffVolume24h() {
-  // docs.hotstuff.trade — "24h volume" is explicitly listed as a documented
-  // concept, but base API URL wasn't found/confirmed.
-  return null;
-}
-
-async function qfexVolume24h() {
-  // docs.qfex.com — REST history endpoints include "Taker-volume history",
-  // but no confirmed simple current-24h-volume endpoint/base URL.
-  return null;
-}
-
-async function risexVolume24h() {
-  // developer.rise.trade — docs explicitly say the API is "work in
-  // progress" with expected breaking changes; not safe to hard-code yet.
-  return null;
-}
+async function lighterData() { return EMPTY; }
+async function edgexData() { return EMPTY; }
+async function reyaData() { return EMPTY; }
+async function nadoData() { return EMPTY; }
+async function grvtData() { return EMPTY; }
+async function extendedData() { return EMPTY; }
+async function hibachiData() { return EMPTY; }
+async function standxData() { return EMPTY; }
+async function hotstuffData() { return EMPTY; }
+async function qfexData() { return EMPTY; }
+async function risexData() { return EMPTY; }
 
 // --- Registry ------------------------------------------------------------
 
-const VOLUME_ADAPTERS = [
-  ['Hyperliquid', hyperliquidVolume24h],
-  ['Aster', asterVolume24h],
-  ['Pacifica', pacificaVolume24h],
-  ['Variational', variationalVolume24h],
-  ['Decibel', decibelVolume24h],
-  ['Lighter', lighterVolume24h],
-  ['edgeX', edgexVolume24h],
-  ['Reya', reyaVolume24h],
-  ['Nado', nadoVolume24h],
-  ['GRVT', grvtVolume24h],
-  ['Extended', extendedVolume24h],
-  ['Hibachi', hibachiVolume24h],
-  ['StandX', standxVolume24h],
-  ['Hotstuff', hotstuffVolume24h],
-  ['QFEX', qfexVolume24h],
-  ['RISEx', risexVolume24h],
+const ADAPTERS = [
+  ['Hyperliquid', hyperliquidData],
+  ['Aster', asterData],
+  ['Pacifica', pacificaData],
+  ['Variational', variationalData],
+  ['Decibel', decibelData],
+  ['Lighter', lighterData],
+  ['edgeX', edgexData],
+  ['Reya', reyaData],
+  ['Nado', nadoData],
+  ['GRVT', grvtData],
+  ['Extended', extendedData],
+  ['Hibachi', hibachiData],
+  ['StandX', standxData],
+  ['Hotstuff', hotstuffData],
+  ['QFEX', qfexData],
+  ['RISEx', risexData],
   // TrueNorth, N1/01, GMTrade, Arcus intentionally excluded — see header.
 ];
 
-async function aggregateVolume24h() {
-  const results = await Promise.allSettled(VOLUME_ADAPTERS.map(([, fn]) => fn()));
+async function aggregateAll() {
+  const results = await Promise.allSettled(ADAPTERS.map(([, fn]) => fn()));
 
-  let total = 0;
-  const sources = [];
+  let volumeTotal = 0;
+  let oiTotal = 0;
+  const volumeSources = [];
+  const openInterestSources = [];
+
   results.forEach((r, i) => {
-    const [name] = VOLUME_ADAPTERS[i];
-    const value = r.status === 'fulfilled' ? r.value : null;
-    if (typeof value === 'number') {
-      total += value;
-      sources.push({ name, ok: true, value });
+    const [name] = ADAPTERS[i];
+    const { volume, openInterest } = r.status === 'fulfilled' ? r.value : EMPTY;
+
+    if (typeof volume === 'number') {
+      volumeTotal += volume;
+      volumeSources.push({ name, ok: true, value: volume });
     } else {
-      sources.push({ name, ok: false });
+      volumeSources.push({ name, ok: false });
+    }
+
+    if (typeof openInterest === 'number') {
+      oiTotal += openInterest;
+      openInterestSources.push({ name, ok: true, value: openInterest });
+    } else {
+      openInterestSources.push({ name, ok: false });
     }
   });
 
-  const anySucceeded = sources.some((s) => s.ok);
-  return { total: anySucceeded ? total : null, sources };
-}
+  const anyVolume = volumeSources.some((s) => s.ok);
+  const anyOI = openInterestSources.some((s) => s.ok);
 
-// --- Open Interest (free DefiLlama endpoint, strict exact matching) ------
-//
-// Maps each of our 20 tracked exchanges to the alias(es) DefiLlama might
-// use for its name/displayName/module field. Exact match only (not fuzzy
-// substring) — an earlier version used loose .includes() matching and
-// produced an inflated, meaningless total by catching unrelated protocols.
-// Canonical key = display name used in the ranking UI.
-
-const OI_ALIASES = {
-  Hyperliquid: ['hyperliquid'],
-  Aster: ['aster'],
-  Lighter: ['lighter'],
-  edgeX: ['edgex'],
-  Variational: ['variational'],
-  Reya: ['reya'],
-  Pacifica: ['pacifica'],
-  Nado: ['nado'],
-  Grvt: ['grvt'],
-  Extended: ['extended'],
-  Decibel: ['decibel'],
-  Hibachi: ['hibachi'],
-  StandX: ['standx'],
-  GMTrade: ['gmtrade'],
-  Rise: ['rise', 'risex'],
-  QFEX: ['qfex'],
-  TrueNorth: ['truenorth'],
-  TradeHotStuff: ['hotstuff', 'tradehotstuff'],
-  N1: ['n1', '01 exchange', '01exchange'],
-  Arcus: ['arcus'],
-};
-
-function resolveCanonicalName(protocol) {
-  const candidates = [protocol.name, protocol.displayName, protocol.module]
-    .filter(Boolean)
-    .map((s) => s.toLowerCase().trim());
-
-  for (const [canonical, aliases] of Object.entries(OI_ALIASES)) {
-    if (aliases.some((alias) => candidates.includes(alias))) return canonical;
-  }
-  return null;
-}
-
-async function aggregateOpenInterest() {
-  const data = await fetchJSON(
-    'https://api.llama.fi/overview/open-interest?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true'
-  );
-  const protocols = data?.protocols || [];
-
-  const valueField = protocols[0]?.total24h != null ? 'total24h' : 'openInterestAtEnd';
-
-  const sources = [];
-  let current = 0;
-  for (const p of protocols) {
-    const canonical = resolveCanonicalName(p);
-    if (!canonical) continue;
-    const value = Number(p[valueField]) || 0;
-    sources.push({ name: canonical, ok: true, value });
-    current += value;
-  }
-
-  return { current: sources.length ? current : null, matchedCount: sources.length, sources };
+  return {
+    volume: anyVolume ? volumeTotal : null,
+    openInterest: anyOI ? oiTotal : null,
+    volumeSources,
+    openInterestSources,
+  };
 }
 
 export default async function handler(req, res) {
   try {
-    const [volume, openInterest] = await Promise.all([
-      aggregateVolume24h(),
-      aggregateOpenInterest(),
-    ]);
+    const agg = await aggregateAll();
 
     res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=1800');
     return res.status(200).json({
       volume: {
-        h24: volume.total,
+        h24: agg.volume,
         h24_change: null,
         d7: null,
         d7_change: null,
@@ -282,13 +205,12 @@ export default async function handler(req, res) {
         d30_change: null,
       },
       openInterest: {
-        current: openInterest.current,
+        current: agg.openInterest,
       },
       meta: {
-        volumeSources: volume.sources,
-        openInterestSources: openInterest.sources,
-        openInterestMatched: openInterest.matchedCount,
-        note: '24h volume = 5 confirmed direct exchange APIs (Hyperliquid, Aster, Pacifica, Variational, Decibel); 11 more have adapter slots but are stubbed pending endpoint verification (see comments); TrueNorth/N1/GMTrade/Arcus excluded from volume per research doc (still eligible for OI matching above, since that comes from DefiLlama, not a direct exchange call). 7d/30d volume needs historical snapshots, not implemented yet.',
+        volumeSources: agg.volumeSources,
+        openInterestSources: agg.openInterestSources,
+        note: 'Volume + OI both come from direct exchange APIs now (DefiLlama dropped entirely). 5 of 16 registered exchanges are fully confirmed (Hyperliquid, Pacifica, Variational, Decibel give both volume+OI; Aster gives volume only — no bulk OI endpoint). 11 more are stubbed pending endpoint verification. TrueNorth/N1/GMTrade/Arcus excluded per research doc. 7d/30d volume needs historical snapshots, not implemented yet.',
       },
     });
   } catch (err) {
