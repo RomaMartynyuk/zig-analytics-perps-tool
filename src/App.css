@@ -353,6 +353,12 @@
   text-transform: uppercase;
   flex-shrink: 0;
 }
+.project-icon-img {
+  object-fit: contain;
+  background: var(--card-tint);
+  padding: 3px;
+  box-sizing: border-box;
+}
 
 /* ---------------- news card ---------------- */
 .news-card {
