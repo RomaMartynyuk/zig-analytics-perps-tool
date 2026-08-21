@@ -1,4 +1,4 @@
-export default function RankingList({ title, tabLabel, items, renderRow, maxHeight }) {
+export default function RankingList({ title, tabLabel, items, renderRow, maxHeight, emptyMessage }) {
   return (
     <div className="card list-card">
       <div className="card-head">
@@ -6,14 +6,20 @@ export default function RankingList({ title, tabLabel, items, renderRow, maxHeig
         {tabLabel && <div className="card-tab">{tabLabel}</div>}
       </div>
 
-      <div className="list-scroll scroll-area" style={maxHeight ? { maxHeight } : undefined}>
-        {items.map((item, i) => (
-          <div className="list-row" key={item.name + i}>
-            {renderRow(item, i)}
+      {items.length === 0 && emptyMessage ? (
+        <div className="list-empty">{emptyMessage}</div>
+      ) : (
+        <>
+          <div className="list-scroll scroll-area" style={maxHeight ? { maxHeight } : undefined}>
+            {items.map((item, i) => (
+              <div className="list-row" key={item.name + i}>
+                {renderRow(item, i)}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      <div className="list-fade" />
+          <div className="list-fade" />
+        </>
+      )}
     </div>
   );
 }

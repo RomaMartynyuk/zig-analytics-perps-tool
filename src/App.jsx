@@ -14,18 +14,11 @@ import ProjectIcon from './components/ProjectIcon';
 
 import { formatUSD, formatPercent } from './lib/format';
 import { useDerivativesData } from './hooks/useDerivativesData';
-import {
-  perpVolumeRanking,
-  openInterestRanking,
-  upcomingSnapshots,
-  lastTickers,
-} from './data/mockMetrics';
+import { openInterestRanking, upcomingSnapshots, lastTickers } from './data/mockMetrics';
 
 import './App.css';
 
-function StatGrid() {
-  const { data, loading, error } = useDerivativesData();
-
+function StatGrid({ data, loading, error }) {
   // Live data still loading, request failed, or this specific card's value
   // is genuinely unavailable (e.g. 7d/30d volume — see api/derivatives.js
   // for why those are null on purpose) — show NaN rather than a fake number.
@@ -68,16 +61,39 @@ function StatGrid() {
 }
 
 function Dashboard() {
+  const { data, loading, error } = useDerivativesData();
+
+  // Real Perp Volume ranking — built from the same /api/derivatives call as
+  // the stat cards above (see api/derivatives.js: 5 of 20 exchanges are
+  // wired to a confirmed live endpoint, the rest return null on purpose).
+  // Only successfully-fetched exchanges are shown, sorted high to low —
+  // projects with no volume data simply don't appear in this list.
+  const volumeRanking = (data?.meta?.volumeSources || [])
+    .filter((s) => s.ok && typeof s.value === 'number')
+    .sort((a, b) => b.value - a.value);
+
+  const volumeTabLabel = loading
+    ? 'Loading…'
+    : volumeRanking.length
+    ? `${volumeRanking.length} of 20 live`
+    : 'No data yet';
+
   return (
     <>
-      <StatGrid />
+      <StatGrid data={data} loading={loading} error={error} />
 
       <div className="row-3col">
         <ChartCard />
 
         <RankingList
           title="Perp Volume (24h) Ranking"
-          items={perpVolumeRanking}
+          tabLabel={volumeTabLabel}
+          items={volumeRanking}
+          emptyMessage={
+            loading
+              ? 'Loading live volume…'
+              : "No live volume data yet — this needs a real deploy, `vite dev` can't reach /api routes."
+          }
           renderRow={(p, i) => (
             <>
               <div className="row-left">
