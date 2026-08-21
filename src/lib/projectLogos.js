@@ -19,9 +19,12 @@ projects.forEach((p) => {
 });
 
 /**
- * Resolves a project display name to a DefiLlama icon CDN URL, or null if
- * we don't have a defillama_slug for it. The icon may still 404 (not every
- * protocol has an icon there) — callers should handle that with onError.
+ * Resolves a project display name to its local logo file, served from
+ * /public/logos/{slug}.png — uploaded manually (see logos/README in that
+ * folder for the exact list), rather than pulled from a CDN, since CDN
+ * coverage for these 20 (mostly new/niche) protocols was inconsistent.
+ * Returns null if we don't have a defillama_slug for this name at all;
+ * the actual file may still be missing — callers handle that with onError.
  */
 export function getLogoUrl(name) {
   if (!name) return null;
@@ -29,5 +32,5 @@ export function getLogoUrl(name) {
   const resolvedName = NAME_ALIASES[norm] || name;
   const slug = slugByNormalizedName[normalize(resolvedName)];
   if (!slug) return null;
-  return `https://icons.llamao.fi/icons/protocols/${slug}.png`;
+  return `/logos/${slug}.png`;
 }
