@@ -9,15 +9,6 @@
     "notes": "Invite only — limited codes"
   },
   {
-    "name": "TxFlow",
-    "category": "Infra",
-    "tier": 1,
-    "defillama_slug": "txflow",
-    "slug_verified": true,
-    "points_status": "not_live",
-    "notes": "Points program not live yet, referral: TXPHILA"
-  },
-  {
     "name": "TrueNorth",
     "category": "AI + Trading",
     "tier": 1,
@@ -25,15 +16,6 @@
     "slug_verified": false,
     "points_status": "retro_confirmed",
     "notes": "Retro confirmed"
-  },
-  {
-    "name": "Bulktrade",
-    "category": "Perps (pre-deposit)",
-    "tier": 1,
-    "defillama_slug": "bulktrade",
-    "slug_verified": false,
-    "points_status": "live",
-    "notes": "Pre-deposit, no trading fees needed. ~$25.9M pre-deposit TVL reported (SolanaFloor) — slug not yet matched to a live DefiLlama page"
   },
   {
     "name": "Arcus",
@@ -45,15 +27,6 @@
     "notes": "Built by ex-dYdX team w/ Robinhood Crypto, on Robinhood Chain. TVL confirmed live on DefiLlama (~$20M)"
   },
   {
-    "name": "Perpl",
-    "category": "Perps",
-    "tier": 2,
-    "defillama_slug": "perpl",
-    "slug_verified": true,
-    "points_status": "live",
-    "notes": "On Monad L1. TVL confirmed live on DefiLlama (~$7M)"
-  },
-  {
     "name": "Rise",
     "category": "Perps",
     "tier": 2,
@@ -61,15 +34,6 @@
     "slug_verified": true,
     "points_status": "live",
     "notes": "Team goes by RISEx on-chain. Built on RISE Chain (Ethereum L2). TVL confirmed live on DefiLlama (~$15M). No public security audit as of writing"
-  },
-  {
-    "name": "TreadFi",
-    "category": "Perps",
-    "tier": 2,
-    "defillama_slug": "tread.fi-perps",
-    "slug_verified": true,
-    "points_status": "running",
-    "notes": "Use organically while interacting with other projects. Note the dot in the DefiLlama slug"
   },
   {
     "name": "Variational",
@@ -88,15 +52,6 @@
     "slug_verified": true,
     "points_status": "running",
     "notes": "Relatively young, mixed long-term outlook. Listed as 'Hotstuff' on some trackers — slug is a best guess"
-  },
-  {
-    "name": "Meridian",
-    "category": "Perps (migrating)",
-    "tier": 2,
-    "defillama_slug": "ethereal-dex",
-    "slug_verified": true,
-    "points_status": "watch",
-    "notes": "Migrating to Robinhood chain, points may favor new users"
   },
   {
     "name": "Pacifica",
@@ -153,15 +108,6 @@
     "notes": "On Solana + BNB Chain, DUSD-margined. Confirmed live on DefiLlama"
   },
   {
-    "name": "Ostium",
-    "category": "Perps (RWA)",
-    "tier": 3,
-    "defillama_slug": "ostium",
-    "slug_verified": true,
-    "points_status": "late_stage",
-    "notes": "On Arbitrum. Confirmed live on DefiLlama. Had an oracle-exploit incident (~$18-23M) on Jul 15, 2026 — worth watching before farming here"
-  },
-  {
     "name": "Hyperliquid",
     "category": "Perps",
     "tier": 3,
@@ -169,15 +115,6 @@
     "slug_verified": true,
     "points_status": "ended",
     "notes": "Best perp dex ever"
-  },
-  {
-    "name": "ApeX Protocol",
-    "category": "Perps",
-    "tier": 3,
-    "defillama_slug": "apex-protocol",
-    "slug_verified": true,
-    "points_status": "late_stage",
-    "notes": "Confirmed live on DefiLlama (~$34.5M TVL)"
   },
   {
     "name": "Lighter",
@@ -225,42 +162,6 @@
     "notes": "Built by ex-Revolut team, on Starknet + Ethereum. Confirmed live on DefiLlama (~$126M TVL). TGE window confirmed for Q3 2026 per earlier research"
   },
   {
-    "name": "Ondo Finance",
-    "category": "RWA Perps",
-    "tier": 3,
-    "defillama_slug": "ondo-finance",
-    "slug_verified": true,
-    "points_status": "watch",
-    "notes": "Ondo Perps hit $7B cumulative volume within weeks of public launch (Aug 2026). Lets tokenized stocks/RWAs be posted as margin directly. Confirmed live on DefiLlama"
-  },
-  {
-    "name": "Antarctic",
-    "category": "Perps",
-    "tier": 3,
-    "defillama_slug": "antarctic",
-    "slug_verified": false,
-    "points_status": "watch",
-    "notes": "0-gas Arbitrum perp DEX. Confirmed to exist and be tracked (appears in DefiLlama-sourced rankings) but exact slug string not directly verified against a live protocol page"
-  },
-  {
-    "name": "Vest Markets",
-    "category": "Perps",
-    "tier": 3,
-    "defillama_slug": "vest-markets",
-    "slug_verified": true,
-    "points_status": "watch",
-    "notes": "Confirmed live on DefiLlama"
-  },
-  {
-    "name": "Jupiter",
-    "category": "Perps + DEX Aggregator",
-    "tier": 3,
-    "defillama_slug": "jupiter",
-    "slug_verified": true,
-    "points_status": "ended",
-    "notes": "Largest Solana aggregator; Jupiter Perps (JLP pool) is the perps product. TVL comes from the combined 'jupiter' protocol page — perps-specific volume lives under a separate DefiLlama sub-page"
-  },
-  {
     "name": "Reya",
     "category": "Perps",
     "tier": 3,
@@ -268,69 +169,6 @@
     "slug_verified": true,
     "points_status": "watch",
     "notes": "Based-rollup, zk-proofs, 1ms speed claim. Confirmed live on DefiLlama"
-  },
-  {
-    "name": "SUN",
-    "category": "Perps",
-    "tier": 3,
-    "defillama_slug": "sunperp",
-    "slug_verified": false,
-    "points_status": "watch",
-    "notes": "Likely refers to SunPerp — Justin Sun/HTX's perp DEX on TRON, launched Oct 2025. Name in your list was just 'SUN' so this mapping isn't certain — verify before relying on it. Note: a separate, unrelated 'SunX' also exists in perp DEX rankings — don't confuse the two"
-  },
-  {
-    "name": "SynFutures",
-    "category": "Perps",
-    "tier": 3,
-    "defillama_slug": "synfutures",
-    "slug_verified": true,
-    "points_status": "watch",
-    "notes": "6-chain permissionless derivatives infra, lets you create futures on arbitrary assets. Confirmed live on DefiLlama"
-  },
-  {
-    "name": "Gains Network",
-    "category": "Perps (multi-asset)",
-    "tier": 3,
-    "defillama_slug": "gains-network",
-    "slug_verified": true,
-    "points_status": "ended",
-    "notes": "gTrade platform, 290+ pairs incl. forex/stocks, up to 500x leverage. $133B+ cumulative volume. Confirmed live on DefiLlama"
-  },
-  {
-    "name": "Phoenix",
-    "category": "Perps",
-    "tier": 3,
-    "defillama_slug": "phoenix",
-    "slug_verified": false,
-    "points_status": "watch",
-    "notes": "Name is too generic to confirm — there's a well-known Solana orderbook DEX called Phoenix that is NOT a perp product, so this may be a different, smaller protocol entirely. Verify manually before trusting any data here"
-  },
-  {
-    "name": "SoSoValue",
-    "category": "Perps",
-    "tier": 3,
-    "defillama_slug": "sosovalue",
-    "slug_verified": false,
-    "points_status": "watch",
-    "notes": "SoSoValue is primarily known as a crypto data/investment platform, not a perp DEX — double check this actually belongs on a perps tracker before relying on it"
-  },
-  {
-    "name": "Upscale",
-    "category": "Perps",
-    "tier": 3,
-    "defillama_slug": "upscale",
-    "slug_verified": false,
-    "points_status": "watch",
-    "notes": "Not found in DefiLlama perp-DEX rankings during research — slug is an unverified guess"
-  },
-  {
-    "name": "Orderly",
-    "category": "Perps Infra",
-    "tier": 3,
-    "defillama_slug": "orderly-perps",
-    "slug_verified": true,
-    "points_status": "watch",
-    "notes": "Omnichain orderbook infrastructure used by many other perp DEXs. Confirmed live on DefiLlama"
   },
   {
     "name": "Decibel",
