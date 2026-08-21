@@ -63,7 +63,16 @@ export default function Sidebar({ active, onChange }) {
         <Settings size={18} strokeWidth={2.2} className="sb-icon" />
       </button>
 
-      <div className="sb-avatar" title="Herzig" />
+      <a
+        className="sb-avatar"
+        href="https://x.com/herzig_crypto"
+        target="_blank"
+        rel="noopener noreferrer"
+        title="@herzig_crypto on X"
+        aria-label="View developer on X (Twitter)"
+      >
+        <img src="/avatar.jpg" alt="" />
+      </a>
     </aside>
   );
 }
