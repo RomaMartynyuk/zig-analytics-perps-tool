@@ -6,6 +6,10 @@ function FundingRate({ value }) {
   return <span className={value >= 0 ? 'up' : 'down'}>{formatPercent(value * 100)}</span>;
 }
 
+function formatApr(rate8h) {
+  return formatPercent(rate8h * 3 * 365 * 100);
+}
+
 export default function FundingPage() {
   const { markets, updatedAt, loading, error, refetch } = useFundingData();
   const featuredMarkets = markets.slice(0, 3);
@@ -37,6 +41,7 @@ export default function FundingPage() {
             <span className="funding-symbol">{market.symbol}-PERP</span>
             <span className="funding-spread">{formatPercent(market.spread8h * 100)}</span>
             <span className="funding-caption">8h funding spread</span>
+            <span className="funding-apr">{formatApr(market.spread8h)} APR</span>
             <div className="funding-route">
               <span>Long {market.low.venue}</span>
               <span>Short {market.high.venue}</span>
@@ -59,7 +64,7 @@ export default function FundingPage() {
         ) : (
           <div className="funding-scroll scroll-area">
             <div className="funding-table-header">
-              <span>Market</span><span>Long</span><span>Short</span><span>Spread (8h)</span>
+              <span>Market</span><span>Long</span><span>Short</span><span>Spread (8h)</span><span>APR</span>
             </div>
             {markets.slice(0, 30).map((market) => (
               <div className="funding-row" key={market.symbol}>
@@ -67,6 +72,7 @@ export default function FundingPage() {
                 <span>{market.low.venue} <FundingRate value={market.low.rate8h} /></span>
                 <span>{market.high.venue} <FundingRate value={market.high.rate8h} /></span>
                 <strong className="up">{formatPercent(market.spread8h * 100)}</strong>
+                <strong className="up">{formatApr(market.spread8h)}</strong>
               </div>
             ))}
           </div>
@@ -74,7 +80,7 @@ export default function FundingPage() {
       </div>
 
       <p className="page-note">
-        Sources: Lighter and Aster public funding feeds. Funding intervals differ by venue; rates above are converted to an 8-hour equivalent for comparison. Last update: {updatedAt ? new Date(updatedAt).toLocaleTimeString('en-GB', { timeZone: 'UTC' }) + ' UTC' : '—'}.
+        Sources: Lighter and Aster public funding feeds. Funding intervals differ by venue; rates above are converted to an 8-hour equivalent for comparison. APR is a simple annualization of the 8h spread (×3×365), not a guaranteed return. Last update: {updatedAt ? new Date(updatedAt).toLocaleTimeString('en-GB', { timeZone: 'UTC' }) + ' UTC' : '—'}.
       </p>
     </section>
   );

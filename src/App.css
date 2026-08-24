@@ -514,13 +514,14 @@
 .funding-symbol, .funding-caption { display: block; color: var(--ink-soft); font-size: 13px; font-weight: 600; }
 .funding-spread { display: block; margin: 8px 0 2px; color: var(--up); font-size: 30px; font-weight: 700; }
 .funding-caption { color: var(--ink-faint); font-size: 11px; }
+.funding-apr { display: inline-block; margin-top: 8px; color: var(--up); font-size: 13px; font-weight: 700; }
 .funding-route { display: flex; justify-content: space-between; gap: 8px; margin-top: 18px; color: var(--ink-soft); font-size: 11px; font-weight: 600; }
 .funding-route span:last-child { color: var(--ink); }
 .skeleton-card { background: linear-gradient(90deg, var(--card-tint) 25%, var(--line) 50%, var(--card-tint) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
 .funding-table-card { padding-bottom: 10px; }
 .funding-table-note { margin-top: 4px; color: var(--ink-faint); font-size: 11px; font-weight: 500; }
 .funding-scroll { max-height: 540px; overflow-y: auto; }
-.funding-table-header, .funding-row { display: grid; grid-template-columns: 1.1fr 1.5fr 1.5fr 0.9fr; gap: 12px; align-items: center; }
+.funding-table-header, .funding-row { display: grid; grid-template-columns: 1.1fr 1.45fr 1.45fr .85fr .85fr; gap: 12px; align-items: center; }
 .funding-table-header { padding: 0 4px 10px; color: var(--ink-faint); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
 .funding-row { padding: 14px 4px; border-top: 1px solid var(--line); color: var(--ink-soft); font-size: 12px; font-weight: 500; }
 .funding-row strong { color: var(--ink); }
@@ -665,6 +666,6 @@
   }
   .funding-table-header,
   .funding-row {
-    min-width: 610px;
+    min-width: 720px;
   }
 }
