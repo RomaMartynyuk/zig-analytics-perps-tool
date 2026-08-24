@@ -546,6 +546,88 @@
 .funding-page {
   max-width: 1120px;
 }
+
+/* ---------------- predictions page ---------------- */
+.predictions-page {
+  max-width: 1120px;
+}
+.predictions-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 4px 0 22px;
+}
+.predictions-heading h1 {
+  font-size: 30px;
+  line-height: 1.1;
+}
+.predictions-heading p {
+  margin-top: 6px;
+  color: var(--ink-faint);
+  font-size: 13px;
+  font-weight: 500;
+}
+.predictions-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+.prediction-card {
+  min-height: 176px;
+  display: flex;
+  flex-direction: column;
+}
+.prediction-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.prediction-card h2 {
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.2;
+}
+.prediction-card h2 + span {
+  display: block;
+  margin-top: 3px;
+  color: var(--ink-faint);
+  font-size: 10.5px;
+  font-weight: 500;
+}
+.prediction-tier {
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--card-tint);
+  color: var(--ink-faint);
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 600;
+}
+.prediction-value {
+  margin-top: auto;
+  padding-top: 20px;
+}
+.prediction-value span {
+  display: block;
+  color: var(--ink-faint);
+  font-size: 11px;
+  font-weight: 600;
+}
+.prediction-value strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-soft);
+  font-size: 27px;
+  line-height: 1;
+}
+.prediction-pending {
+  margin-top: 9px;
+  color: var(--ink-faint);
+  font-size: 10.5px;
+  font-weight: 500;
+}
 .funding-heading {
   display: flex;
   align-items: flex-start;
@@ -692,6 +774,9 @@
   .funding-summary-grid {
     grid-template-columns: 1fr;
   }
+  .predictions-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 @media (max-width: 720px) {
   .app-shell {
@@ -728,6 +813,13 @@
   .funding-heading {
     align-items: stretch;
     flex-direction: column;
+  }
+  .predictions-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .predictions-grid {
+    grid-template-columns: 1fr;
   }
   .funding-refresh {
     align-self: flex-start;

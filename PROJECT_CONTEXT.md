@@ -148,6 +148,8 @@ Vercel Cron.
   Volume Ranking і OI Ranking теж реальні.
 - **"Perps Volume Graph"** — live bar chart топ-8 бірж за 24h perp volume.
   WoW-динаміка все ще потребує окремого історичного snapshot pipeline.
+- **Predictions** — grid з однією карткою для кожного tracked perp. Поле
+  `Price per point` навмисно порожнє, доки не буде погоджена методологія моделі.
 - **News-картка — порожній стан**, RSS/новини не підключені (Фаза 3
   оригінального плану).
 - **Сторінки News/Analytics/Calendar/Settings у sidebar** —

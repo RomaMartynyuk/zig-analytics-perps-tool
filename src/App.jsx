@@ -11,6 +11,7 @@ import Footer from './components/Footer';
 import ComingSoon from './components/ComingSoon';
 import ProjectsPage from './components/ProjectsPage';
 import FundingPage from './components/FundingPage';
+import PredictionsPage from './components/PredictionsPage';
 import ProjectIcon from './components/ProjectIcon';
 
 import { formatUSD, formatPercent, formatTokenPrice } from './lib/format';
@@ -250,6 +251,8 @@ export default function App() {
               <ProjectsPage />
             ) : active === 'funding' ? (
               <FundingPage />
+            ) : active === 'predictions' ? (
+              <PredictionsPage />
             ) : (
               <ComingSoon section={active} />
             )}

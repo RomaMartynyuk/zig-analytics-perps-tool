@@ -46,6 +46,8 @@ content). Two sections have real content:
   Last News is still a placeholder. Upcoming Snapshots are
   configured per project in `src/data/projects.json`.
 - **Projects** — live TVL from DeFiLlama for all 20 tracked projects.
+- **Predictions** — a grid of one card per tracked perp, ready for the future
+  price-per-point prediction model. It intentionally does not display invented forecasts.
 
 News, Analytics, Calendar, and Settings render a "coming soon"
 placeholder — routing and animation work, those pages just need content.

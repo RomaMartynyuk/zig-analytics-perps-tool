@@ -5,6 +5,7 @@ import {
   BarChart3,
   Building2,
   Percent,
+  TrendingUp,
   Calendar,
   Settings,
 } from 'lucide-react';
@@ -13,6 +14,7 @@ const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutGrid },
   { id: 'news', label: 'News', icon: Newspaper },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+  { id: 'predictions', label: 'Predictions', icon: TrendingUp },
   { id: 'projects', label: 'Projects', icon: Building2 },
   { id: 'funding', label: 'Funding', icon: Percent },
   { id: 'calendar', label: 'Calendar', icon: Calendar },
