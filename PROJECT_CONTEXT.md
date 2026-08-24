@@ -150,7 +150,7 @@ Vercel Cron.
   (Місяць 2 roadmap).
 - **News-картка — порожній стан**, RSS/новини не підключені (Фаза 3
   оригінального плану).
-- **Сторінки News/Analytics/Community/Calendar/Settings у sidebar** —
+- **Сторінки News/Analytics/Calendar/Settings у sidebar** —
   "coming soon"-заглушки, роутинг є, контенту нема.
 
 ## Стиль спілкування з користувачем (важливо для тону відповідей)

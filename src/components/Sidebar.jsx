@@ -4,7 +4,7 @@ import {
   Newspaper,
   BarChart3,
   Building2,
-  Users,
+  Percent,
   Calendar,
   Settings,
 } from 'lucide-react';
@@ -14,7 +14,7 @@ const NAV_ITEMS = [
   { id: 'news', label: 'News', icon: Newspaper },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'projects', label: 'Projects', icon: Building2 },
-  { id: 'community', label: 'Community', icon: Users },
+  { id: 'funding', label: 'Funding', icon: Percent },
   { id: 'calendar', label: 'Calendar', icon: Calendar },
 ];
 

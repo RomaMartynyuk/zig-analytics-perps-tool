@@ -46,7 +46,7 @@ content). Two sections have real content:
   configured per project in `src/data/projects.json`.
 - **Projects** — live TVL from DeFiLlama for all 20 tracked projects.
 
-News, Analytics, Community, Calendar, and Settings render a "coming soon"
+News, Analytics, Calendar, and Settings render a "coming soon"
 placeholder — routing and animation work, those pages just need content.
 
 ## Data sources — what's real, what's not
@@ -202,7 +202,7 @@ Functions — no extra config needed.
   has no bulk ticker; QFEX's OI proxy is weak)
 - Month 2 of the roadmap: WoW volume comparison + Farming Difficulty
   Index — needs a historical snapshot pipeline, not built yet
-- Build out News, Analytics, Community, Calendar, Settings sections
+- Build out News, Analytics, Calendar, Settings sections
 - Consider unifying the name mismatches between `projects.json` and
   `api/derivatives.js`'s adapter registry (currently bridged by an alias
   map, works but easy to forget when adding a new exchange)

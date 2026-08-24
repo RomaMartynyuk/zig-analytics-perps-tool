@@ -2,7 +2,6 @@ const LABELS = {
   news: 'News',
   analytics: 'Analytics',
   projects: 'Projects',
-  community: 'Community',
   calendar: 'Calendar',
   settings: 'Settings',
 };

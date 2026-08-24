@@ -10,6 +10,7 @@ import NewsCard from './components/NewsCard';
 import Footer from './components/Footer';
 import ComingSoon from './components/ComingSoon';
 import ProjectsPage from './components/ProjectsPage';
+import FundingPage from './components/FundingPage';
 import ProjectIcon from './components/ProjectIcon';
 
 import { formatUSD, formatPercent, formatTokenPrice } from './lib/format';
@@ -247,6 +248,8 @@ export default function App() {
               <Dashboard />
             ) : active === 'projects' ? (
               <ProjectsPage />
+            ) : active === 'funding' ? (
+              <FundingPage />
             ) : (
               <ComingSoon section={active} />
             )}
