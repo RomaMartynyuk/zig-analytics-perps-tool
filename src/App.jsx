@@ -64,8 +64,8 @@ function Dashboard() {
   const { data, loading, error } = useDerivativesData();
 
   // Real Perp Volume ranking — built from the same /api/derivatives call as
-  // the stat cards above (see api/derivatives.js: 5 of 20 exchanges are
-  // wired to a confirmed live endpoint, the rest return null on purpose).
+  // the stat cards above. Only exchanges whose public API and USD units are
+  // verified are included; unavailable sources return null on purpose.
   // Only successfully-fetched exchanges are shown, sorted high to low —
   // projects with no volume data simply don't appear in this list.
   const volumeRanking = (data?.meta?.volumeSources || [])
@@ -80,8 +80,7 @@ function Dashboard() {
 
   // Same pattern for Open Interest — real per-exchange breakdown from the
   // same /api/derivatives call, sorted high to low, only successfully
-  // matched exchanges shown (see api/derivatives.js: DefiLlama's free
-  // /overview/open-interest endpoint, exact-name matched against our 20).
+  // fetched exchanges shown.
   const oiRanking = (data?.meta?.openInterestSources || [])
     .filter((s) => s.ok && typeof s.value === 'number')
     .sort((a, b) => b.value - a.value);

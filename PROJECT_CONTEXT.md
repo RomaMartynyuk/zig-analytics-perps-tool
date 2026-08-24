@@ -90,16 +90,14 @@ public/
 дослідницького файлу користувача (`perp_dex_direct_api_research.md`),
 не з довільного вибору.
 
-**Реєстр адаптерів (16 зареєстровано з 20 tracked; 4 свідомо виключені):**
+**Реєстр адаптерів (усі 20 tracked бірж зареєстровані):**
 
-| Рівень довіри | Біржі | Деталі |
+| Статус | Біржі | Деталі |
 |---|---|---|
-| **Підтверджено (реальний приклад відповіді)** | Hyperliquid, Aster, Pacifica, Variational, Decibel | Volume у всіх; OI у всіх, крім Aster (Binance-fork API не дає bulk OI) |
-| **Низький ризик (з документації, без прикладу)** | StandX, Nado | Готові тотали в одному bulk-виклику |
-| **Середній ризик** | Hibachi, edgeX | Per-symbol fan-out з concurrency-лімітом; Hibachi множить quantity×price для коректних USD-одиниць |
-| **Високий ризик** | QFEX | `startingOpenInterest` — це OI на початку свічки, не поточний; найменш надійне число з усіх |
-| **Заглушки (null, чекають дослідження)** | Lighter, Reya, GRVT, Extended, Hotstuff, RISEx | GRVT: bulk ticker не існує (тільки per-instrument) |
-| **Свідомо виключені** | TrueNorth, N1/01, GMTrade, Arcus | Дослідницький файл прямо каже "не вигадувати ендпоінт" |
+| **Працювали на live-deploy до цієї сесії** | Hyperliquid, edgeX, Aster, Pacifica, Variational, StandX | Volume: усі шість; OI: усі, крім Aster |
+| **Виправлено / додано, API перевірено живою відповіддю** | Hibachi, Lighter, Extended, Reya | Volume + OI. Hibachi множить base OI на mark price; Reya множить `oiQty` на co-timestamped oracle price; Lighter і Extended повертають USD/USDC notional напряму. Потрібна остаточна перевірка після Vercel deploy. |
+| **Свідомо вимкнені, щоб не показувати некоректні числа** | Nado, QFEX, Decibel | Nado: старий response contract не підтверджений; QFEX: `startingOpenInterest` не є поточним USD OI; Decibel вимагає Aptos Node API key для market data. |
+| **Заглушки, чекають на перевірений публічний API** | GRVT, Hotstuff, RISEx, TrueNorth, Arcus, GMTrade, N1 | Реєстр повертає `null`, а `meta.*Sources[].reason` пояснює причину. Не вигадувати endpoint чи одиниці виміру. |
 
 **Volume та OI тепер НЕЗАЛЕЖНІ по кожній біржі** — біржа може дати volume,
 але не OI (як-от Aster), і навпаки. Обидва рахуються й агрегуються окремо.
@@ -163,11 +161,10 @@ Vercel Cron.
 
 ## Що далі (з незавершеного)
 
-1. Перевірити на живому деплої: скільки з 16 зареєстрованих бірж реально
-   віддають дані (очікування: 5 підтверджених точно працюють, решта —
-   під питанням)
-2. Якщо Hotstuff/QFEX/GRVT колись стабілізують публічні API — повернутись
-   і замінити заглушки/ризиковані адаптери
+1. Задеплоїти та перевірити на живому Vercel: очікування — 10 джерел volume
+   і 9 джерел OI (Aster не дає bulk OI). Звірити суми з UI кожної біржі.
+2. Якщо Hotstuff/QFEX/GRVT/Nado стабілізують публічні API — повернутись
+   і замінити заглушки лише після перевірки полів та USD-одиниць.
 3. Місяць 2 з road map: WoW-порівняння обсягів, Farming Difficulty Index
    (потребує історичних снепшотів — інфраструктура ще не збудована)
 4. Naming inconsistency в `projects.json` (RISEx/Rise, Grvt/GRVT,

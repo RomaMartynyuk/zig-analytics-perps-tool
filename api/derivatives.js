@@ -50,7 +50,7 @@ async function fetchWithRetry(url, options = {}, { timeoutMs = 8000, retries = 2
       }
       if (!res.ok) return null;
       return await res.json();
-    } catch (err) {
+    } catch {
       clearTimeout(timer);
       if (attempt === retries) return null;
       // network error / timeout — brief pause, then retry
@@ -74,6 +74,40 @@ async function mapWithConcurrency(items, limit, fn) {
   }
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
   return results;
+}
+
+// `Number(null)` is 0, which would silently turn a missing upstream field
+// into a seemingly valid zero. Keep missing values missing instead.
+function toFiniteNumber(value) {
+  if (value == null || value === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function sumRows(rows, { volume, openInterest, predicate = () => true }) {
+  let volumeTotal = 0;
+  let oiTotal = 0;
+  let hasVolume = false;
+  let hasOI = false;
+
+  for (const row of rows) {
+    if (!predicate(row)) continue;
+    const rowVolume = toFiniteNumber(volume(row));
+    const rowOI = toFiniteNumber(openInterest(row));
+    if (rowVolume != null) {
+      volumeTotal += rowVolume;
+      hasVolume = true;
+    }
+    if (rowOI != null) {
+      oiTotal += rowOI;
+      hasOI = true;
+    }
+  }
+
+  return {
+    volume: hasVolume ? volumeTotal : null,
+    openInterest: hasOI ? oiTotal : null,
+  };
 }
 
 // ============================================================================
@@ -180,32 +214,11 @@ async function standxData() {
   };
 }
 
-// --- 2. Nado — RISK: LOW ---------------------------------------------------
-// GET https://archive.prod.nado.xyz/v2/contracts?edge=true
-// Single call returns an array of perp contracts. Summed across all:
-//   quote_volume     -> contributes to 24h volume
-//   open_interest_usd -> contributes to OI (already USD, no price
-//                        multiplication needed per the field name)
-// Risk is LOW: one bulk endpoint, straightforward summing, no fan-out.
-// Fallback: non-array response (wrong shape, error page, etc.) -> both
-// values null for this refresh cycle; per-source cache preserves the prior
-// good value instead of blanking the row.
-async function nadoData() {
-  const data = await fetchWithRetry('https://archive.prod.nado.xyz/v2/contracts?edge=true');
-  const contracts = Array.isArray(data) ? data : data?.contracts ?? data?.data;
-  if (!Array.isArray(contracts)) return { volume: null, openInterest: null };
-
-  let volume = 0;
-  let oi = 0;
-  let any = false;
-  for (const c of contracts) {
-    const v = Number(c.quote_volume);
-    const o = Number(c.open_interest_usd);
-    if (Number.isFinite(v)) { volume += v; any = true; }
-    if (Number.isFinite(o)) { oi += o; any = true; }
-  }
-  return any ? { volume, openInterest: oi } : { volume: null, openInterest: null };
-}
+// --- 2. Nado ---------------------------------------------------------------
+// The earlier v2 endpoint and field mapping were never live-verified. Keep
+// this source out of aggregates until a public response with USD semantics is
+// confirmed; null is safer than a plausible but wrong total.
+async function nadoData() { return { volume: null, openInterest: null }; }
 
 // --- 3. Hibachi — RISK: MEDIUM ---------------------------------------------
 // Base: https://data-api.hibachi.xyz
@@ -233,28 +246,30 @@ async function nadoData() {
 // (partial coverage rather than an all-or-nothing failure).
 async function hibachiData() {
   const info = await fetchWithRetry('https://data-api.hibachi.xyz/market/exchange-info');
-  const symbols = (info?.symbols ?? info?.data?.symbols ?? [])
+  const symbols = (info?.futureContracts ?? info?.symbols ?? info?.data?.futureContracts ?? info?.data?.symbols ?? [])
+    .filter((contract) => typeof contract === 'string' || contract?.status === 'LIVE')
     .map((s) => (typeof s === 'string' ? s : s?.symbol))
     .filter(Boolean);
   if (!symbols.length) return { volume: null, openInterest: null };
 
   const perSymbol = await mapWithConcurrency(symbols, 6, async (symbol) => {
-    const [stats, oiData] = await Promise.all([
+    const [stats, oiData, prices] = await Promise.all([
       fetchWithRetry(`https://data-api.hibachi.xyz/market/data/stats?symbol=${encodeURIComponent(symbol)}`),
       fetchWithRetry(
         `https://data-api.hibachi.xyz/market/data/open-interest?symbol=${encodeURIComponent(symbol)}`
       ),
+      fetchWithRetry(`https://data-api.hibachi.xyz/market/data/prices?symbol=${encodeURIComponent(symbol)}`),
     ]);
 
-    const vol = Number(stats?.volume24h ?? stats?.data?.volume24h);
-    const qty = Number(oiData?.totalQuantity ?? oiData?.data?.totalQuantity);
-    const price = Number(
-      stats?.markPrice ?? stats?.lastPrice ?? stats?.price ?? stats?.indexPrice ?? stats?.data?.markPrice
+    const vol = toFiniteNumber(stats?.volume24h ?? stats?.data?.volume24h);
+    const qty = toFiniteNumber(oiData?.totalQuantity ?? oiData?.data?.totalQuantity);
+    const price = toFiniteNumber(
+      prices?.markPrice ?? prices?.tradePrice ?? prices?.spotPrice ?? prices?.data?.markPrice
     );
 
     return {
-      volume: Number.isFinite(vol) ? vol : null,
-      oiUsd: Number.isFinite(qty) && Number.isFinite(price) ? qty * price : null,
+      volume: vol,
+      oiUsd: qty != null && price != null ? qty * price : null,
     };
   });
 
@@ -270,6 +285,55 @@ async function hibachiData() {
     volume: anyVol ? volume : null,
     openInterest: anyOi ? oi : null,
   };
+}
+
+// --- Lighter ---------------------------------------------------------------
+// Official public endpoint. `daily_quote_token_volume` and `open_interest`
+// are USDC-denominated for perpetual markets, so they can be summed directly.
+async function lighterData() {
+  const data = await fetchWithRetry('https://mainnet.zklighter.elliot.ai/api/v1/orderBookDetails');
+  const markets = data?.order_book_details ?? data?.perps_order_book_details ?? [];
+  if (!Array.isArray(markets)) return { volume: null, openInterest: null };
+
+  return sumRows(markets, {
+    volume: (market) => market.daily_quote_token_volume,
+    openInterest: (market) => market.open_interest,
+    predicate: (market) => market.market_type === 'perp' && market.status === 'active',
+  });
+}
+
+// --- Extended --------------------------------------------------------------
+// `dailyVolume` and `openInterest` are explicitly documented as collateral
+// asset values. Extended's perpetual collateral is USD, therefore both are
+// already dollar-denominated and no price multiplication is necessary.
+async function extendedData() {
+  const data = await fetchWithRetry('https://api.starknet.extended.exchange/api/v1/info/markets');
+  const markets = data?.data;
+  if (!Array.isArray(markets)) return { volume: null, openInterest: null };
+
+  return sumRows(markets, {
+    volume: (market) => market.marketStats?.dailyVolume,
+    openInterest: (market) => market.marketStats?.openInterest,
+    predicate: (market) => market.type === 'PERPETUAL' && market.active !== false && market.status !== 'DELISTED',
+  });
+}
+
+// --- Reya ------------------------------------------------------------------
+// The public summary exposes the rolling 24h USD volume and OI in base lots.
+// Convert each market's `oiQty` with its co-timestamped oracle price before
+// aggregation; summing raw BTC, ETH, etc. quantities would be meaningless.
+async function reyaData() {
+  const markets = await fetchWithRetry('https://api.reya.xyz/v2/markets/summary');
+  if (!Array.isArray(markets)) return { volume: null, openInterest: null };
+
+  return sumRows(markets, {
+    volume: (market) => market.volume24h,
+    openInterest: (market) => {
+      const quantity = toFiniteNumber(market.oiQty);
+      const price = toFiniteNumber(market.throttledOraclePrice ?? market.throttledPoolPrice);
+      return quantity != null && price != null ? quantity * price : null;
+    },
+  });
 }
 
 // --- 4. edgeX — RISK: MEDIUM -------------------------------------------
@@ -334,72 +398,22 @@ function sumEdgexTickers(rows) {
   };
 }
 
-// --- 5. QFEX — RISK: HIGH ---------------------------------------------
-// No convenient bulk totals endpoint exists per available docs. Path used:
-//   1. GET https://api.qfex.com/refdata          -> list of symbols
-//   2. per symbol: GET https://api.qfex.com/candles/{symbol}
-//      -> usdVolume (per-candle volume), startingOpenInterest
-//
-// RISK IS HIGH for several stacked reasons:
-//  - the candles endpoint's exact query contract (interval/limit/time
-//    range params) isn't confirmed — this calls it with no extra params
-//    and hopes the response is either a single latest candle or an array
-//    ordered so the LAST entry is most recent;
-//  - "startingOpenInterest" is OI at the START of whatever candle period
-//    is returned, not necessarily the current/ending OI — this is used as
-//    a rough proxy only, and is very likely to under/over-state real
-//    current OI depending on how stale the returned candle is;
-//  - summing usdVolume only makes sense if each symbol's candle actually
-//    represents a comparable ~24h window, which isn't confirmed either.
-// Given all of that, treat QFEX's numbers as the least trustworthy of the
-// five — if this turns out too noisy in practice, the intended fix is to
-// simply stop calling this adapter (comment it out of the registry below),
-// not to keep guessing at the query params.
-// Fallback: refdata failure -> nothing to iterate -> both null. Per-symbol
-// candle failures are skipped individually (partial coverage).
-async function qfexData() {
-  const refdata = await fetchWithRetry('https://api.qfex.com/refdata');
-  const symbols = (refdata?.symbols ?? refdata?.data ?? [])
-    .map((s) => (typeof s === 'string' ? s : s?.symbol))
-    .filter(Boolean);
-  if (!symbols.length) return { volume: null, openInterest: null };
-
-  const perSymbol = await mapWithConcurrency(symbols, 6, async (symbol) => {
-    const data = await fetchWithRetry(`https://api.qfex.com/candles/${encodeURIComponent(symbol)}`);
-    const candle = Array.isArray(data) ? data[data.length - 1] : data;
-    const vol = Number(candle?.usdVolume);
-    const oi = Number(candle?.startingOpenInterest);
-    return {
-      volume: Number.isFinite(vol) ? vol : null,
-      oi: Number.isFinite(oi) ? oi : null,
-    };
-  });
-
-  let volume = 0;
-  let oi = 0;
-  let anyVol = false;
-  let anyOi = false;
-  for (const r of perSymbol) {
-    if (r.volume != null) { volume += r.volume; anyVol = true; }
-    if (r.oi != null) { oi += r.oi; anyOi = true; }
-  }
-  return {
-    volume: anyVol ? volume : null,
-    openInterest: anyOi ? oi : null,
-  };
-}
+// --- 5. QFEX ---------------------------------------------------------------
+// `startingOpenInterest` from the former candle endpoint is not current OI
+// and is not guaranteed to be USD-denominated. Do not publish it as OI.
+async function qfexData() { return { volume: null, openInterest: null }; }
 
 // ============================================================================
 // STUBBED — endpoint/field genuinely not researched at all yet (unchanged)
 // ============================================================================
 
-async function lighterData() { return { volume: null, openInterest: null }; }
-async function reyaData() { return { volume: null, openInterest: null }; }
 async function grvtData() { return { volume: null, openInterest: null }; } // per-instrument only, see project history
-async function extendedData() { return { volume: null, openInterest: null }; }
 async function hotstuffData() { return { volume: null, openInterest: null }; }
-async function qfexOldStub() { return { volume: null, openInterest: null }; } // superseded by qfexData above
 async function risexData() { return { volume: null, openInterest: null }; }
+async function trueNorthData() { return { volume: null, openInterest: null }; }
+async function arcusData() { return { volume: null, openInterest: null }; }
+async function gmTradeData() { return { volume: null, openInterest: null }; }
+async function n1Data() { return { volume: null, openInterest: null }; }
 
 // ============================================================================
 // REGISTRY
@@ -422,9 +436,24 @@ const ADAPTERS = [
   ['Extended', extendedData],
   ['Hotstuff', hotstuffData],
   ['RISEx', risexData],
-  // TrueNorth, N1/01, GMTrade, Arcus intentionally excluded — no safe
-  // endpoint identified for any of them, per research doc's own caution.
+  ['TrueNorth', trueNorthData],
+  ['Arcus', arcusData],
+  ['GMTrade', gmTradeData],
+  ['N1', n1Data],
 ];
+
+const UNAVAILABLE_REASONS = {
+  Decibel: 'The documented market-data endpoints require an Aptos Node API key.',
+  Nado: 'The former v2 response contract is unverified; it is excluded until a live public USD schema is confirmed.',
+  QFEX: '`startingOpenInterest` is candle-start data, not current USD open interest.',
+  GRVT: 'No public bulk volume/OI endpoint has been verified.',
+  Hotstuff: 'No public market-data endpoint has been verified.',
+  RISEx: 'No public market-data endpoint has been verified.',
+  TrueNorth: 'No public market-data endpoint has been verified.',
+  Arcus: 'No public market-data endpoint has been verified.',
+  GMTrade: 'No public market-data endpoint has been verified.',
+  N1: 'The tracked protocol is migrating; the former public market API is no longer reliable.',
+};
 
 // ============================================================================
 // CACHE + AGGREGATION
@@ -485,13 +514,13 @@ async function getAggregate() {
       volumeTotal += entry.volume;
       volumeSources.push({ name, ok: true, value: entry.volume });
     } else {
-      volumeSources.push({ name, ok: false });
+      volumeSources.push({ name, ok: false, reason: UNAVAILABLE_REASONS[name] });
     }
     if (entry?.openInterest != null) {
       oiTotal += entry.openInterest;
       openInterestSources.push({ name, ok: true, value: entry.openInterest });
     } else {
-      openInterestSources.push({ name, ok: false });
+      openInterestSources.push({ name, ok: false, reason: UNAVAILABLE_REASONS[name] });
     }
   }
 
@@ -528,10 +557,10 @@ export default async function handler(req, res) {
         volumeSources: agg.volumeSources,
         openInterestSources: agg.openInterestSources,
         cacheAgeMs: agg.cacheAgeMs,
-        note: '10 exchanges registered: 5 previously confirmed with a real example response (Hyperliquid, Aster, Pacifica, Variational, Decibel), 5 newly added from docs description without a live-tested example (StandX/Nado low risk, Hibachi/edgeX medium risk, QFEX high risk — see per-adapter comments). Refreshed at most once per 75 min per warm instance; a source that fails on a given cycle keeps showing its last successful value instead of going blank. TrueNorth/N1/GMTrade/Arcus excluded — no safe endpoint identified. 7d/30d volume needs historical snapshots, not implemented yet.',
+        note: '20 tracked exchanges are registered. Values are returned only when their public API and USD units have been verified; unavailable sources remain null instead of contributing guessed numbers. Refreshed at most once per 75 min per warm instance; a source that fails on a given cycle keeps its last successful value. 7d/30d volume needs historical snapshots, not implemented yet.',
       },
     });
-  } catch (err) {
+  } catch {
     return res.status(502).json({ error: 'Aggregation failed' });
   }
 }

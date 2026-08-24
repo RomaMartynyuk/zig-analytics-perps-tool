@@ -57,17 +57,15 @@ it's not used anywhere in this project. TVL is the one thing DeFiLlama
 still provides.
 
 ### Perp Volume (24h) + Open Interest (Dashboard) — direct exchange APIs
-Proxied through `api/derivatives.js`, one small adapter per exchange, 20
-exchanges total (the list from the research doc), 16 registered:
+Proxied through `api/derivatives.js`; all 20 tracked exchanges are registered.
+Numbers are included only after the public API and USD units were verified.
 
-| Confidence | Exchanges | Notes |
+| Status | Exchanges | Notes |
 |---|---|---|
-| **Confirmed** (real example response checked) | Hyperliquid, Aster, Pacifica, Variational, Decibel | Volume for all 5; OI for all except Aster (no bulk OI endpoint on Binance-fork APIs) |
-| **Low risk** (from docs, no live example) | StandX, Nado | Single bulk call, pre-aggregated totals |
-| **Medium risk** | Hibachi, edgeX | Per-symbol fan-out; Hibachi multiplies quantity × price to keep OI in USD |
-| **High risk** | QFEX | Uses `startingOpenInterest` (start-of-candle, not current) as a rough proxy — least trustworthy number in the set |
-| **Stubbed** (return null, need research) | Lighter, Reya, GRVT, Extended, Hotstuff, RISEx | GRVT specifically: only a per-instrument ticker exists, no bulk endpoint |
-| **Excluded entirely** | TrueNorth, N1/01, GMTrade, Arcus | Research doc explicitly warns against guessing an endpoint for these |
+| **Live baseline** | Hyperliquid, edgeX, Aster, Pacifica, Variational, StandX | Volume for all 6; OI for all except Aster. |
+| **Verified adapters** | Hibachi, Lighter, Extended, Reya | Volume + OI. Hibachi/Reya convert base OI to USD per market; Lighter/Extended return USD/USDC notionals directly. |
+| **Intentionally unavailable** | Nado, QFEX, Decibel | Nado's old schema is unverified; QFEX's candle-start OI is not current; Decibel requires an Aptos Node API key. |
+| **Awaiting a verified public API** | GRVT, Hotstuff, RISEx, TrueNorth, Arcus, GMTrade, N1 | Return `null` with a diagnostic reason in the API metadata. |
 
 Volume and OI are tracked **independently per exchange** — a source can
 report one without the other.
