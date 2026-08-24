@@ -45,7 +45,7 @@ function parseTime(value) {
 
 export function getRecurringSnapshot(project, now = new Date()) {
   const schedule = project.points_snapshot;
-  if (!schedule || !['live', 'running'].includes(project.points_status)) return null;
+  if (!schedule) return null;
 
   const targetWeekday = WEEKDAYS[String(schedule.weekday).toLowerCase()];
   const time = parseTime(schedule.time);

@@ -20,13 +20,28 @@ import { formatCountdown, getRecurringSnapshot } from './lib/pointsSnapshots';
 
 import './App.css';
 
-function StatGrid({ data, loading, error }) {
+function StatGrid({ data, loading, error, snapshots, tickers, tickersLoading, tickersError, now }) {
   // Live data still loading, request failed, or this specific card's value
-  // is genuinely unavailable (e.g. 7d/30d volume — see api/derivatives.js
-  // for why those are null on purpose) — show NaN rather than a fake number.
+  // is genuinely unavailable — show NaN rather than a fake number.
   const v = data?.volume;
   const oi = data?.openInterest;
   const requestFailed = !loading && (error || !data);
+  const nextSnapshotSlides = snapshots.slice(0, 3).map((snapshot) => ({
+    id: snapshot.name,
+    name: snapshot.name,
+    value: snapshot.isPointsDay ? 'Points Day' : formatCountdown(snapshot.scheduledAt, now),
+    tone: snapshot.isPointsDay ? 'up' : '',
+  }));
+  const bestTickerSlides = [...tickers]
+    .sort((a, b) => b.change - a.change)
+    .slice(0, 3)
+    .map((ticker) => ({
+      id: ticker.ticker,
+      name: ticker.ticker,
+      value: formatPercent(ticker.change),
+      detail: formatTokenPrice(ticker.price),
+      tone: ticker.change >= 0 ? 'up' : 'down',
+    }));
 
   return (
     <div className="stat-grid">
@@ -37,19 +52,12 @@ function StatGrid({ data, loading, error }) {
         loading={loading}
         unavailable={requestFailed || v?.h24 == null}
       />
+      <StatCard label="Next Snapshot" slides={nextSnapshotSlides} unavailable={!nextSnapshotSlides.length} />
       <StatCard
-        label="Perp Volume (7d)"
-        value={v?.d7}
-        change={v?.d7_change}
-        loading={loading}
-        unavailable={requestFailed || v?.d7 == null}
-      />
-      <StatCard
-        label="Perp Volume (30d)"
-        value={v?.d30}
-        change={v?.d30_change}
-        loading={loading}
-        unavailable={requestFailed || v?.d30 == null}
+        label="Best Ticker (24h)"
+        slides={bestTickerSlides}
+        loading={tickersLoading}
+        unavailable={!tickersLoading && (tickersError || !bestTickerSlides.length)}
       />
       <StatCard
         label="Open Interest"
@@ -113,7 +121,16 @@ function Dashboard() {
 
   return (
     <>
-      <StatGrid data={data} loading={loading} error={error} />
+      <StatGrid
+        data={data}
+        loading={loading}
+        error={error}
+        snapshots={upcomingSnapshots}
+        tickers={tickers}
+        tickersLoading={tickersLoading}
+        tickersError={tickersError}
+        now={snapshotNow}
+      />
 
       <div className="row-3col">
         <ChartCard />

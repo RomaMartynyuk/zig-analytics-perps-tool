@@ -139,9 +139,10 @@ Vercel Cron.
   через мокований `fetch`/Playwright `route()`, а не реальні виклики.
   Перший реальний деплой варто уважно перевірити.
 - **Upcoming Snapshots** беруться з `points_snapshot` у `projects.json` і
-  повторюються щотижня. Поки кампанія points активна (`points_status: "live"`
-  або `"running"`), у день снепшоту відображається `Points Day` протягом 24 годин,
-  після чого сайт автоматично починає відлік до наступного такого дня. Last Perps
+  повторюються щотижня. Наявність цього поля означає, що кампанія активна;
+  завершену кампанію прибирають видаленням `points_snapshot`. У день снепшоту
+  відображається `Points Day` протягом 24 годин, після чого сайт автоматично
+  починає відлік до наступного такого дня. Last Perps
   Tickers — реальні CoinGecko USD price + 24h change для HYPE, LIT, EDGE,
   ASTER, BP і GRVT, одним batched server-side запитом та 60-секундним кешем.
   Volume Ranking і OI Ranking теж реальні.

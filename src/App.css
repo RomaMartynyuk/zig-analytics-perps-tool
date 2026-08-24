@@ -230,6 +230,58 @@
   color: var(--ink-faint);
   font-variant-numeric: tabular-nums;
 }
+.stat-carousel-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.stat-carousel-content {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 9px;
+}
+.stat-carousel-name {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.stat-carousel-detail {
+  color: var(--ink-faint);
+  font-size: 13px;
+  font-weight: 600;
+}
+.stat-dots {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.stat-dot {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--line);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.stat-dot:hover,
+.stat-dot:focus-visible {
+  transform: scale(1.25);
+  outline: none;
+  background: var(--ink-faint);
+}
+.stat-dot.active {
+  background: var(--sidebar);
+}
 
 /* ---------------- skeleton loading ---------------- */
 .skeleton-line {

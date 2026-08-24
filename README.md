@@ -30,7 +30,7 @@ login`, then it serves both frontend and `/api` correctly).
 ## What's built
 
 **Homepage (Dashboard)** — matches the approved mockup 1:1: stat cards
-(Perp Volume 24h/7d/30d, Open Interest), Perps Volume Graph placeholder,
+(Perp Volume 24h, Next Snapshot, Best Ticker 24h, Open Interest), Perps Volume Graph placeholder,
 Perp Volume / Open Interest rankings, recurring Upcoming Snapshots, Last News
 placeholder, Last Perps Tickers. All list cards scroll internally with a
 custom thin scrollbar once content overflows.
@@ -134,9 +134,11 @@ Add `points_snapshot` to the relevant project in
 }
 ```
 
-Only projects with `points_status` set to `live` or `running` appear in the
-card. At the configured weekly time, the row displays `Points Day` for 24 hours;
-then it automatically begins counting down to the following week.
+Every project with `points_snapshot` appears in the card — this field is the
+source of truth that its points campaign is active. To remove a finished campaign
+from the card, delete its `points_snapshot`. At the configured weekly time, the
+row displays `Points Day` for 24 hours; then it automatically begins counting
+down to the following week.
 
 ## Project structure
 
