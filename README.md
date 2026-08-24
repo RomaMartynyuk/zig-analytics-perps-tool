@@ -1,9 +1,14 @@
 # ZigAnalytics
 
 Analytics dashboard for tracking points-farming / DeFi / perp-DEX projects.
-Built for @herzig_crypto — matches the approved homepage design exactly,
-with a working sidebar navigation foundation and live DeFiLlama data on the
-Projects page.
+Built for @herzig_crypto — matches the approved homepage mockup, with real
+live data for TVL, Perp Volume (24h), and Open Interest across 20 tracked
+exchanges.
+
+> **New to this repo?** Read `PROJECT_CONTEXT.md` first — it's a dense,
+> single-file summary of the whole project (architecture decisions, current
+> data confidence per exchange, known limitations) meant to bring a fresh
+> chat session up to speed without re-reading history.
 
 ## Run locally
 
@@ -16,125 +21,162 @@ npm run dev
 
 Opens at `http://localhost:5173`.
 
+**Important:** `npm run dev` / `npm run preview` alone won't run the
+`/api/*` serverless functions — Vite's dev server doesn't execute them.
+Every live-data card will show `NaN` locally unless you either deploy to
+Vercel, or run `npx vercel dev` (needs a free Vercel account + `vercel
+login`, then it serves both frontend and `/api` correctly).
+
 ## What's built
 
 **Homepage (Dashboard)** — matches the approved mockup 1:1: stat cards
 (Perp Volume 24h/7d/30d, Open Interest), Perps Volume Graph placeholder,
 Perp Volume / Open Interest rankings, Upcoming Snapshots, Last News
-placeholder, Last Perps Tickers. All list cards scroll internally (custom
-thin scrollbar) once content overflows — that's the "повзунки" requirement.
+placeholder, Last Perps Tickers. All list cards scroll internally with a
+custom thin scrollbar once content overflows.
 
-**Sidebar navigation** — fully functional and animated. Clicking an icon
-switches sections with a spring-animated active indicator (framer-motion
-`layoutId`, so it slides smoothly between buttons instead of snapping) and
-a fade transition on the content area. Two sections have real content:
+**Sidebar navigation** — fully functional and animated (framer-motion
+`layoutId` spring animation on the active indicator, fade transition on
+content). Two sections have real content:
 
-- **Dashboard** — the homepage above (mock metrics — see note below)
-- **Projects** — live TVL pulled from DeFiLlama for all 19 tracked
-  projects (this reuses the Week 1 API layer)
+- **Dashboard** — stat cards + Perp Volume/OI rankings are **real, live
+  data**. Perps Volume Graph, Upcoming Snapshots, Last News, and Last Perps
+  Tickers are still placeholders.
+- **Projects** — live TVL from DeFiLlama for all 20 tracked projects.
 
-The rest (News, Analytics, Community, Calendar, Settings) render a
-"coming soon" placeholder — the routing and animation are ready, those
-pages just need content in a later pass.
+News, Analytics, Community, Calendar, and Settings render a "coming soon"
+placeholder — routing and animation work, those pages just need content.
 
-## Important — how live TVL data actually loads (CORS fix)
+## Data sources — what's real, what's not
 
-DeFiLlama's API blocks direct browser requests (no CORS header on their
-side) — calling `api.llama.fi` straight from client-side JS fails, in
-production too, not just locally. Fixed with a tiny Vercel Serverless
-Function at `api/tvl.js` that proxies the request server-side (not subject
-to browser CORS), and `src/lib/defillama.js` now calls `/api/tvl?slug=...`
-instead of DefiLlama directly.
+### TVL (Projects page) — DeFiLlama, free tier
+`/protocol/{slug}` is free and CORS-blocked from the browser, so it's
+proxied through `api/tvl.js`. **DeFiLlama's Derivatives data (volume/OI)
+is Pro-only ($300/mo)** — confirmed against their own pricing docs — so
+it's not used anywhere in this project. TVL is the one thing DeFiLlama
+still provides.
 
-**Caveat:** `npm run dev` / `npm run preview` alone won't run that
-serverless function — Vite's dev server doesn't execute `/api` routes.
-Every project will show "Manual" until you either deploy to Vercel, or
-run `npx vercel dev` locally (needs a free Vercel account + `vercel login`,
-then it serves both the frontend and `/api` correctly). This hasn't been
-tested against a live deployment yet — worth checking as the very next
-step.
+### Perp Volume (24h) + Open Interest (Dashboard) — direct exchange APIs
+Proxied through `api/derivatives.js`, one small adapter per exchange, 20
+exchanges total (the list from the research doc), 16 registered:
 
-## Slug verification — done for 9 of 19 projects
+| Confidence | Exchanges | Notes |
+|---|---|---|
+| **Confirmed** (real example response checked) | Hyperliquid, Aster, Pacifica, Variational, Decibel | Volume for all 5; OI for all except Aster (no bulk OI endpoint on Binance-fork APIs) |
+| **Low risk** (from docs, no live example) | StandX, Nado | Single bulk call, pre-aggregated totals |
+| **Medium risk** | Hibachi, edgeX | Per-symbol fan-out; Hibachi multiplies quantity × price to keep OI in USD |
+| **High risk** | QFEX | Uses `startingOpenInterest` (start-of-candle, not current) as a rough proxy — least trustworthy number in the set |
+| **Stubbed** (return null, need research) | Lighter, Reya, GRVT, Extended, Hotstuff, RISEx | GRVT specifically: only a per-instrument ticker exists, no bulk endpoint |
+| **Excluded entirely** | TrueNorth, N1/01, GMTrade, Arcus | Research doc explicitly warns against guessing an endpoint for these |
 
-Confirmed live on DefiLlama: Arcus, Perpl, Rise (slug `risex`), TreadFi
-(slug `tread.fi-perps` — note the dot), Variational, Pacifica, Nado,
-Hibachi, GMTrade, StandX (slug `standx-perps`), Ostium.
+Volume and OI are tracked **independently per exchange** — a source can
+report one without the other.
 
-Still unconfirmed / likely not indexed yet (showing "Manual", matches
-their "ultra early / invite-only" status from your original tier list):
-QFEX, TxFlow, TrueNorth, Bulktrade, TrueCurrentX, TradeHotStuff, Meridian.
+**7d/30d volume is always `null`.** No exchange exposes that as a single
+live call; it needs our own historical snapshots (Month 2 of the roadmap,
+not built yet).
 
-N1 is a chain (powers 01.xyz), not a single protocol — doesn't map to the
-`/protocol/{slug}` endpoint this app uses, left as `null` on purpose.
+### Caching (api/derivatives.js)
+Module-scope in-memory cache, ~75 min TTL. **Not a durable cross-instance
+cache** — different Vercel instances / cold starts each get their own
+copy. Fine for a personal-scale dashboard; if a guaranteed shared cache is
+ever needed, that's Vercel KV/Upstash (free tier exists) + a Cron job.
 
-| Section | Status |
-|---|---|
-| Projects page (TVL) | **Real** — live DeFiLlama fetch, same as Week 1 |
-| Stat cards (Perp Volume, Open Interest) | Placeholder — DeFiLlama's derivatives/OI endpoints aren't wired yet |
-| Perp Volume / Open Interest rankings | Placeholder numbers, but **real project list** from `projects.json` |
-| Upcoming Snapshots | Placeholder countdowns |
-| Last Perps Tickers | Placeholder prices |
-| Last News | Empty state — no source connected yet (Phase 3) |
+If one exchange fails on a refresh cycle, its last successful value is
+kept (not wiped to null) — a single flaky source never blanks its row or
+drags down the total.
 
-Loading the Projects page right now shows every project as **"Manual"** —
-that's the graceful-fallback working correctly, not a bug. It means none
-of the guessed `defillama_slug` values in `projects.json` matched a real
-DeFiLlama protocol yet. Worth doing next: verify/correct slugs one by one
-against https://defillama.com/protocols.
+## Slug verification (TVL, `projects.json`)
+
+All 20 tracked projects have a `defillama_slug` field:
+
+Confirmed live on DefiLlama: Arcus, Rise (`risex`), Variational, Pacifica,
+Nado, Hibachi, GMTrade, StandX (`standx-perps`), Hyperliquid, Lighter,
+Aster, edgeX, Grvt, Extended, Reya, Decibel.
+
+Not indexed on DefiLlama (shows `NaN` on the Projects page — this is the
+graceful-fallback working correctly, not a bug): QFEX, TrueNorth,
+TradeHotStuff, N1 (N1 is a chain powering 01.xyz, not a single protocol —
+intentionally `null`).
+
+## Project logos
+
+`public/logos/{defillama_slug}.png` — **manually uploaded**, all 20
+present. An earlier attempt used DefiLlama's icon CDN
+(`icons.llamao.fi/icons/protocols/{slug}.png`) but coverage was
+inconsistent for these newer/niche projects, so local files replaced it.
+`ProjectIcon.jsx` falls back to a colored letter if a file is ever
+missing.
+
+**Note:** exchange display names in `api/derivatives.js`'s adapter
+registry don't always match `projects.json`'s `name` field exactly
+(`GRVT`/`Grvt`, `Hotstuff`/`TradeHotStuff`, `RISEx`/`Rise`) —
+`src/lib/projectLogos.js` has a `NAME_ALIASES` map bridging these. Keep it
+in sync if you add a new exchange with a similarly mismatched name.
 
 ## Project structure
 
 ```
+api/
+  tvl.js               ← DeFiLlama TVL proxy (CORS workaround)
+  derivatives.js         ← Perp Volume + OI aggregation across 16 exchange adapters
+
 src/
-  data/projects.json        ← tracked-project list (tier, category, DefiLlama slug, points status)
-  data/mockMetrics.js        ← placeholder Perp Volume / OI / ticker data (deterministic, not random per reload)
-  lib/defillama.js           ← DeFiLlama API client (graceful fallback if a slug isn't indexed)
-  lib/format.js               ← number/percent formatting helpers
-  lib/icons.js                 ← accent color cycling for project icons
-  hooks/useProjectsData.js     ← loads live TVL for every tracked project
+  data/
+    projects.json          ← 20 tracked projects (tier, category, slug, points status)
+    mockMetrics.js            ← still-placeholder data (Snapshots, Tickers) — volume/OI rankings are real now
+  hooks/
+    useProjectsData.js        ← TVL for the Projects page
+    useDerivativesData.js       ← volume/OI for the Dashboard
+  lib/
+    defillama.js             ← client for /api/tvl
+    format.js                   ← number/percent formatting
+    icons.js                      ← accent color cycling (fallback icon backgrounds)
+    projectLogos.js                ← resolves project name → /logos/{slug}.png
   components/
-    Header.jsx                  ← logo, title, search bar
-    Sidebar.jsx                  ← animated nav (framer-motion)
-    StatCard.jsx, ChartCard.jsx, RankingList.jsx, NewsCard.jsx
-    ProjectsPage.jsx              ← live-data "Projects" section
-    ComingSoon.jsx                 ← placeholder for unbuilt sections
-  styles/tokens.css              ← design tokens (approved cream/black palette)
+    Header.jsx, Sidebar.jsx, StatCard.jsx, ChartCard.jsx, RankingList.jsx,
+    NewsCard.jsx, ProjectIcon.jsx, ProjectsPage.jsx, ComingSoon.jsx, Footer.jsx
+  App.jsx                 ← assembles the Dashboard, sidebar routing
+
+public/
+  avatar.jpg              ← real profile photo, links to x.com/herzig_crypto
+  logo.png                  ← project logo (Header, next to "Zig Analytics")
+  logos/{slug}.png            ← 20 real project logos
 ```
 
 ## Design system
 
-- Font: **Fredoka** (Google Fonts) — matches the rounded, friendly look in the approved mockup
-- Background: warm cream `#E6E0D3`, cards white `#FEFCF8`, sidebar near-black `#18181C`
-- Semantic colors: green `#3FB56B` (up), red `#E45B4E` (down)
-- Project icons cycle through 5 accent colors (`src/lib/icons.js`) since we don't have real project logos — swap in actual logo images later if you get them
-
-## One thing to swap in yourself
-
-`.sb-avatar` in the sidebar is currently a gradient placeholder circle.
-Drop your actual profile picture in `public/` and reference it there when
-you're ready — didn't want to hardcode a base64 image into the repo.
+- Font: **Fredoka** (Google Fonts) — matches the approved mockup's rounded look
+- Palette (`src/styles/tokens.css`): warm cream background `#E6E0D3`, white
+  cards `#FEFCF8`, near-black sidebar `#18181C`, semantic green `#3FB56B`
+  / red `#E45B4E`
+- Project icons: real logo if available (`public/logos/`), else a colored
+  circle with the first letter, cycling through 5 accent colors
 
 ## Deploy (Vercel, free tier)
 
-1. Push this project to a GitHub repo:
-   ```bash
-   git init
-   git add .
-   git commit -m "ZigAnalytics — homepage v2"
-   git branch -M main
-   git remote add origin <your-repo-url>
-   git push -u origin main
-   ```
-2. Go to [vercel.com](https://vercel.com), sign in with GitHub, click
-   **Add New → Project**, select the repo.
-3. Framework preset: **Vite** (auto-detected). Leave build settings default.
-4. Deploy — you get a live `.vercel.app` URL, custom domain optional later.
+```bash
+git add .
+git commit -m "your message"
+git push
+```
+
+Vercel auto-deploys from the connected GitHub repo. Framework preset:
+**Vite** (auto-detected), default build settings (`npm run build`, output
+`dist`). `/api/*.js` files are picked up automatically as Serverless
+Functions — no extra config needed.
 
 ## Next steps
 
-- Verify/correct `defillama_slug` values in `projects.json`
-- Wire real Perp Volume / Open Interest data (DeFiLlama has a derivatives
-  overview endpoint separate from the TVL one used today — worth checking
-  before Month 2's WoW work)
+- Verify on the live deployment how many of the 16 registered exchanges
+  actually return data (expect the 5 "confirmed" ones to work reliably;
+  the rest are unverified against a real response)
+- Revisit the stubbed/excluded exchanges if their public APIs mature
+  (Hotstuff's docs weren't even indexed by search at time of writing; GRVT
+  has no bulk ticker; QFEX's OI proxy is weak)
+- Month 2 of the roadmap: WoW volume comparison + Farming Difficulty
+  Index — needs a historical snapshot pipeline, not built yet
 - Build out News, Analytics, Community, Calendar, Settings sections
-- Swap in the real avatar image
+- Consider unifying the name mismatches between `projects.json` and
+  `api/derivatives.js`'s adapter registry (currently bridged by an alias
+  map, works but easy to forget when adding a new exchange)
