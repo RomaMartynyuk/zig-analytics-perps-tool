@@ -20,6 +20,13 @@ export function formatPercent(value) {
   return `${sign}${value.toFixed(1)}%`;
 }
 
+export function formatTokenPrice(value) {
+  if (value == null || !Number.isFinite(value)) return '—';
+  if (value >= 1) return `$${value.toFixed(2)}`;
+  if (value >= 0.01) return `$${value.toFixed(4)}`;
+  return `$${value.toFixed(6)}`;
+}
+
 export const POINTS_STATUS_LABELS = {
   live: 'Points Live',
   not_live: 'Not Live',

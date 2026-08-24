@@ -138,8 +138,10 @@ Vercel Cron.
   не мав мережевого доступу з пісочниці до бірж/CDN, тому все тестувалось
   через мокований `fetch`/Playwright `route()`, а не реальні виклики.
   Перший реальний деплой варто уважно перевірити.
-- **Snapshots і Tickers (на Dashboard) — досі мок-дані** (`mockMetrics.js`).
-  Тільки Volume Ranking і OI Ranking вже реальні.
+- **Snapshots (на Dashboard) — досі мок-дані** (`mockMetrics.js`). Last Perps
+  Tickers — реальні CoinGecko USD price + 24h change для HYPE, LIT, EDGE,
+  ASTER, BP і GRVT, одним batched server-side запитом та 60-секундним кешем.
+  Volume Ranking і OI Ranking теж реальні.
 - **"Perps Volume Graph" — порожня заглушка**, чекає історичних снепшотів
   (Місяць 2 roadmap).
 - **News-картка — порожній стан**, RSS/новини не підключені (Фаза 3

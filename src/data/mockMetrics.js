@@ -27,10 +27,3 @@ export const upcomingSnapshots = projects
     hours: Math.floor(seededValue(p.name + 'h', 0, 23)),
     minutes: Math.floor(seededValue(p.name + 'm', 0, 59)),
   }));
-
-export const lastTickers = projects.map((p) => ({
-  ...p,
-  ticker: '$' + p.name.slice(0, 4).toUpperCase(),
-  price: seededValue(p.name + 'price', 0.4, 45),
-  change: seededValue(p.name + 'chg', -8, 12),
-}));

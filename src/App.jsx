@@ -12,9 +12,10 @@ import ComingSoon from './components/ComingSoon';
 import ProjectsPage from './components/ProjectsPage';
 import ProjectIcon from './components/ProjectIcon';
 
-import { formatUSD, formatPercent } from './lib/format';
+import { formatUSD, formatPercent, formatTokenPrice } from './lib/format';
 import { useDerivativesData } from './hooks/useDerivativesData';
-import { upcomingSnapshots, lastTickers } from './data/mockMetrics';
+import { usePerpsTickers } from './hooks/usePerpsTickers';
+import { upcomingSnapshots } from './data/mockMetrics';
 
 import './App.css';
 
@@ -62,6 +63,7 @@ function StatGrid({ data, loading, error }) {
 
 function Dashboard() {
   const { data, loading, error } = useDerivativesData();
+  const { data: tickers, loading: tickersLoading, error: tickersError } = usePerpsTickers();
 
   // Real Perp Volume ranking — built from the same /api/derivatives call as
   // the stat cards above. Only exchanges whose public API and USD units are
@@ -161,7 +163,15 @@ function Dashboard() {
 
         <RankingList
           title="Last Perps Tickers"
-          items={lastTickers}
+          tabLabel="CoinGecko · 24h"
+          items={tickers}
+          emptyMessage={
+            tickersLoading
+              ? 'Loading live token prices…'
+              : tickersError
+                ? 'Live token prices are temporarily unavailable.'
+                : 'No live token prices available.'
+          }
           renderRow={(p, i) => (
             <>
               <div className="row-left">
@@ -169,7 +179,7 @@ function Dashboard() {
                 <span className="row-name">{p.ticker}</span>
               </div>
               <span className="row-value">
-                ${p.price.toFixed(2)}{' '}
+                {formatTokenPrice(p.price)}{' '}
                 <span className={p.change >= 0 ? 'up' : 'down'}>{formatPercent(p.change)}</span>
               </span>
             </>

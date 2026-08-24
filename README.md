@@ -39,9 +39,10 @@ custom thin scrollbar once content overflows.
 `layoutId` spring animation on the active indicator, fade transition on
 content). Two sections have real content:
 
-- **Dashboard** — stat cards + Perp Volume/OI rankings are **real, live
-  data**. Perps Volume Graph, Upcoming Snapshots, Last News, and Last Perps
-  Tickers are still placeholders.
+- **Dashboard** — stat cards + Perp Volume/OI rankings and Last Perps Tickers
+  are **real, live data**. The ticker card uses one batched CoinGecko request
+  for HYPE, LIT, EDGE, ASTER, BP and GRVT, ordered by live USD price. Perps
+  Volume Graph, Upcoming Snapshots and Last News are still placeholders.
 - **Projects** — live TVL from DeFiLlama for all 20 tracked projects.
 
 News, Analytics, Community, Calendar, and Settings render a "coming soon"
@@ -123,7 +124,7 @@ api/
 src/
   data/
     projects.json          ← 20 tracked projects (tier, category, slug, points status)
-    mockMetrics.js            ← still-placeholder data (Snapshots, Tickers) — volume/OI rankings are real now
+    mockMetrics.js            ← still-placeholder data (Snapshots) — volume/OI rankings and ticker prices are real now
   hooks/
     useProjectsData.js        ← TVL for the Projects page
     useDerivativesData.js       ← volume/OI for the Dashboard
