@@ -80,7 +80,7 @@ export default function FundingPage() {
       </div>
 
       <p className="page-note">
-        Sources: Lighter and Aster public funding feeds. Funding intervals differ by venue; rates above are converted to an 8-hour equivalent for comparison. APR is a simple annualization of the 8h spread (×3×365), not a guaranteed return. Last update: {updatedAt ? new Date(updatedAt).toLocaleTimeString('en-GB', { timeZone: 'UTC' }) + ' UTC' : '—'}.
+        Sources: Lighter, Aster, Variational, Pacifica and edgeX public funding feeds. edgeX is limited to eight shared liquid markets because its API requires one request per contract. Funding intervals differ by venue; rates above are converted to an 8-hour equivalent for comparison. APR is a simple annualization of the 8h spread (×3×365), not a guaranteed return. Last update: {updatedAt ? new Date(updatedAt).toLocaleTimeString('en-GB', { timeZone: 'UTC' }) + ' UTC' : '—'}.
       </p>
     </section>
   );
