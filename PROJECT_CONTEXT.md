@@ -146,8 +146,8 @@ Vercel Cron.
   Tickers — реальні CoinGecko USD price + 24h change для HYPE, LIT, EDGE,
   ASTER, BP і GRVT, одним batched server-side запитом та 60-секундним кешем.
   Volume Ranking і OI Ranking теж реальні.
-- **"Perps Volume Graph" — порожня заглушка**, чекає історичних снепшотів
-  (Місяць 2 roadmap).
+- **"Perps Volume Graph"** — live bar chart топ-8 бірж за 24h perp volume.
+  WoW-динаміка все ще потребує окремого історичного snapshot pipeline.
 - **News-картка — порожній стан**, RSS/новини не підключені (Фаза 3
   оригінального плану).
 - **Сторінки News/Analytics/Calendar/Settings у sidebar** —

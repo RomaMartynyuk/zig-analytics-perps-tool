@@ -30,7 +30,7 @@ login`, then it serves both frontend and `/api` correctly).
 ## What's built
 
 **Homepage (Dashboard)** — matches the approved mockup 1:1: stat cards
-(Perp Volume 24h, Next Snapshot, Best Ticker 24h, Open Interest), Perps Volume Graph placeholder,
+(Perp Volume 24h, Next Snapshot, Best Ticker 24h, Open Interest), live Perps Volume Graph,
 Perp Volume / Open Interest rankings, recurring Upcoming Snapshots, Last News
 placeholder, Last Perps Tickers. All list cards scroll internally with a
 custom thin scrollbar once content overflows.
@@ -42,7 +42,8 @@ content). Two sections have real content:
 - **Dashboard** — stat cards + Perp Volume/OI rankings and Last Perps Tickers
   are **real, live data**. The ticker card uses one batched CoinGecko request
   for HYPE, LIT, EDGE, ASTER, BP and GRVT, ordered by live USD price. Perps
-  Volume Graph and Last News are still placeholders. Upcoming Snapshots are
+  Volume Graph visualizes the live 24h distribution across the top exchanges;
+  Last News is still a placeholder. Upcoming Snapshots are
   configured per project in `src/data/projects.json`.
 - **Projects** — live TVL from DeFiLlama for all 20 tracked projects.
 

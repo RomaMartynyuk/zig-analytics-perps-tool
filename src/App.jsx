@@ -134,7 +134,7 @@ function Dashboard() {
       />
 
       <div className="row-3col">
-        <ChartCard />
+        <ChartCard sources={volumeRanking} loading={loading} error={error} />
 
         <RankingList
           title="Perp Volume (24h) Ranking"
