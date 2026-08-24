@@ -96,7 +96,7 @@
     "defillama_slug": "01-exchange",
     "slug_verified": true,
     "points_status": "live",
-    "notes": "N1 is a chain (powers 01.xyz, invite-only testnet), not a single protocol — TVL doesn't map to the /protocol endpoint used here"
+    "notes": "N1 is currently on devnet. The official Nord bulk API supplies its live devnet perp volume and OI; TVL still does not map to the /protocol endpoint used here."
   },
   {
     "name": "StandX",
@@ -171,12 +171,12 @@
     "notes": "Based-rollup, zk-proofs, 1ms speed claim. Confirmed live on DefiLlama"
   },
   {
-    "name": "Decibel",
-    "category": "Perps",
+    "name": "Tread.fi",
+    "category": "Trading execution",
     "tier": 3,
-    "defillama_slug": "decibel",
-    "slug_verified": true,
-    "points_status": "live",
-    "notes": "Built on Aptos, incubated by Aptos Labs. ~$57M TVL, CLOB model. Confirmed live on DefiLlama"
+    "defillama_slug": "tread-fi",
+    "slug_verified": false,
+    "points_status": "not_live",
+    "notes": "Execution/OEMS platform for user-connected exchange accounts. It is not a perp venue, so it is excluded from global venue Volume/OI totals."
   }
 ]

@@ -52,9 +52,9 @@ placeholder — routing and animation work, those pages just need content.
 ### TVL (Projects page) — DeFiLlama, free tier
 `/protocol/{slug}` is free and CORS-blocked from the browser, so it's
 proxied through `api/tvl.js`. **DeFiLlama's Derivatives data (volume/OI)
-is Pro-only ($300/mo)** — confirmed against their own pricing docs — so
-it's not used anywhere in this project. TVL is the one thing DeFiLlama
-still provides.
+is Pro-only ($300/mo)** — its endpoint returns HTTP 402 without a plan.
+The public Perps page blocks server-side HTML parsing with HTTP 403, so it
+is not a reliable fallback. TVL is the one thing DeFiLlama still provides.
 
 ### Perp Volume (24h) + Open Interest (Dashboard) — direct exchange APIs
 Proxied through `api/derivatives.js`; all 20 tracked exchanges are registered.
@@ -63,9 +63,9 @@ Numbers are included only after the public API and USD units were verified.
 | Status | Exchanges | Notes |
 |---|---|---|
 | **Live baseline** | Hyperliquid, edgeX, Aster, Pacifica, Variational, StandX | Volume for all 6; OI for all except Aster. |
-| **Verified adapters** | Hibachi, Lighter, Extended, Reya | Volume + OI. Hibachi/Reya convert base OI to USD per market; Lighter/Extended return USD/USDC notionals directly. |
-| **Intentionally unavailable** | Nado, QFEX, Decibel | Nado's old schema is unverified; QFEX's candle-start OI is not current; Decibel requires an Aptos Node API key. |
-| **Awaiting a verified public API** | GRVT, Hotstuff, RISEx, TrueNorth, Arcus, GMTrade, N1 | Return `null` with a diagnostic reason in the API metadata. |
+| **Verified adapters** | Hibachi, Lighter, Extended, Reya, Nado, Hotstuff, RISEx, Arcus, N1 | Volume + OI. N1 is explicitly devnet data. Nado and Arcus return USD volume directly; Hibachi/Reya/Hotstuff/RISEx/Arcus/N1 convert base OI to USD per market; Lighter/Extended return USD/USDC notionals directly. |
+| **Intentionally unavailable** | QFEX, Tread.fi | QFEX's aggregate endpoint failed live contract validation; Tread.fi is an account-specific execution platform, not an independent venue. |
+| **Awaiting a verified public API** | GRVT, GMTrade | Return `null` with a diagnostic reason in the API metadata. TrueNorth is an AI data platform, not a perp venue, so it is intentionally excluded. |
 
 Volume and OI are tracked **independently per exchange** — a source can
 report one without the other.
@@ -90,7 +90,7 @@ All 20 tracked projects have a `defillama_slug` field:
 
 Confirmed live on DefiLlama: Arcus, Rise (`risex`), Variational, Pacifica,
 Nado, Hibachi, GMTrade, StandX (`standx-perps`), Hyperliquid, Lighter,
-Aster, edgeX, Grvt, Extended, Reya, Decibel.
+Aster, edgeX, Grvt, Extended, Reya.
 
 Not indexed on DefiLlama (shows `NaN` on the Projects page — this is the
 graceful-fallback working correctly, not a bug): QFEX, TrueNorth,

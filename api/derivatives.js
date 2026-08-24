@@ -112,8 +112,8 @@ function sumRows(rows, { volume, openInterest, predicate = () => true }) {
 
 // ============================================================================
 // PREVIOUSLY CONFIRMED ADAPTERS (unchanged) — real example response checked
-// against official docs for each: Hyperliquid, Aster, Pacifica, Variational,
-// Decibel. See project history for the verification notes.
+// against official docs for each: Hyperliquid, Aster, Pacifica and
+// Variational. See project history for the verification notes.
 // ============================================================================
 
 async function hyperliquidData() {
@@ -171,18 +171,11 @@ async function variationalData() {
   };
 }
 
-async function decibelData() {
-  const data = await fetchWithRetry('https://api.mainnet.aptoslabs.com/decibel/api/v1/daily_stats');
-  const volCandidate = data?.volume_24h ?? data?.daily_volume ?? data?.volume ?? data?.data?.volume_24h;
-  const oiCandidate =
-    data?.open_interest ?? data?.openInterest ?? data?.data?.open_interest ?? data?.data?.openInterest;
-  const volume = Number(volCandidate);
-  const oi = Number(oiCandidate);
-  return {
-    volume: Number.isFinite(volume) ? volume : null,
-    openInterest: Number.isFinite(oi) ? oi : null,
-  };
-}
+// Tread.fi is an execution/OEMS service for a user's connected exchange
+// accounts, rather than a trading venue. Its API requires an account token
+// and exposes that account's orders, so it must never be added to a global
+// venue-volume/OI aggregate (doing so would also double-count connected CEXs).
+async function treadData() { return { volume: null, openInterest: null }; }
 
 // ============================================================================
 // NEW ADAPTERS — lower confidence tier, built from docs description without
@@ -215,10 +208,20 @@ async function standxData() {
 }
 
 // --- 2. Nado ---------------------------------------------------------------
-// The earlier v2 endpoint and field mapping were never live-verified. Keep
-// this source out of aggregates until a public response with USD semantics is
-// confirmed; null is safer than a plausible but wrong total.
-async function nadoData() { return { volume: null, openInterest: null }; }
+// One archive-indexer request returns every contract. `quote_volume` and
+// `open_interest_usd` are already USD notional, so no per-ticker requests or
+// price conversion is needed.
+async function nadoData() {
+  const data = await fetchWithRetry('https://archive.prod.nado.xyz/v2/contracts?edge=true');
+  const contracts = Array.isArray(data) ? data : Object.values(data ?? {});
+  if (!contracts.length) return { volume: null, openInterest: null };
+
+  return sumRows(contracts, {
+    volume: (contract) => contract.quote_volume,
+    openInterest: (contract) => contract.open_interest_usd,
+    predicate: (contract) => contract.product_type === 'perpetual',
+  });
+}
 
 // --- 3. Hibachi — RISK: MEDIUM ---------------------------------------------
 // Base: https://data-api.hibachi.xyz
@@ -404,16 +407,98 @@ function sumEdgexTickers(rows) {
 async function qfexData() { return { volume: null, openInterest: null }; }
 
 // ============================================================================
-// STUBBED — endpoint/field genuinely not researched at all yet (unchanged)
+// STILL UNAVAILABLE — no verified, low-request public aggregation path
 // ============================================================================
 
 async function grvtData() { return { volume: null, openInterest: null }; } // per-instrument only, see project history
-async function hotstuffData() { return { volume: null, openInterest: null }; }
-async function risexData() { return { volume: null, openInterest: null }; }
+
+// --- Hotstuff --------------------------------------------------------------
+// A single POST with `symbol: all` returns all perpetual tickers. Both
+// `volume_24h` and `open_interest` are base-asset quantities, so each is
+// converted using the co-timestamped mark price before summing.
+async function hotstuffData() {
+  const data = await fetchWithRetry('https://api.hotstuff.trade/info', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ method: 'ticker', params: { symbol: 'all' } }),
+  });
+  const markets = Array.isArray(data) ? data : data?.data;
+  if (!Array.isArray(markets)) return { volume: null, openInterest: null };
+
+  return sumRows(markets, {
+    volume: (market) => {
+      const quantity = toFiniteNumber(market.volume_24h);
+      const price = toFiniteNumber(market.mark_price);
+      return quantity != null && price != null ? quantity * price : null;
+    },
+    openInterest: (market) => {
+      const quantity = toFiniteNumber(market.open_interest);
+      const price = toFiniteNumber(market.mark_price);
+      return quantity != null && price != null ? quantity * price : null;
+    },
+    predicate: (market) => market.type === 'perp',
+  });
+}
+
+// --- RISEx -----------------------------------------------------------------
+// The public markets endpoint is already a complete market snapshot. Quote
+// volume is USD/USDC notional; OI is base quantity and is converted by mark.
+async function risexData() {
+  const data = await fetchWithRetry('https://api.rise.trade/v1/markets');
+  const markets = data?.data?.markets ?? data?.markets;
+  if (!Array.isArray(markets)) return { volume: null, openInterest: null };
+
+  return sumRows(markets, {
+    volume: (market) => market.quote_volume_24h,
+    openInterest: (market) => {
+      const quantity = toFiniteNumber(market.open_interest);
+      const price = toFiniteNumber(market.mark_price);
+      return quantity != null && price != null ? quantity * price : null;
+    },
+    predicate: (market) => market.active !== false,
+  });
+}
 async function trueNorthData() { return { volume: null, openInterest: null }; }
-async function arcusData() { return { volume: null, openInterest: null }; }
+
+// --- Arcus -----------------------------------------------------------------
+// A single public response contains every market. Volume is already USD
+// notional; OI is base quantity and is converted using the market's mark.
+async function arcusData() {
+  const data = await fetchWithRetry('https://api.arcus.xyz/v1/markets');
+  const markets = data?.markets;
+  if (!Array.isArray(markets)) return { volume: null, openInterest: null };
+
+  return sumRows(markets, {
+    volume: (market) => market.volume24hNotional,
+    openInterest: (market) => {
+      const quantity = toFiniteNumber(market.openInterest);
+      const price = toFiniteNumber(market.markPrice);
+      return quantity != null && price != null ? quantity * price : null;
+    },
+    predicate: (market) => market.type === 'PERPETUAL' && market.status === 'ONLINE',
+  });
+}
 async function gmTradeData() { return { volume: null, openInterest: null }; }
-async function n1Data() { return { volume: null, openInterest: null }; }
+
+// --- N1 (Nord) -------------------------------------------------------------
+// The official Nord API's one bulk endpoint returns every live market. N1 is
+// currently in devnet, so these are explicitly its devnet market metrics;
+// quote volume and mark prices are USD-denominated for the listed perps.
+async function n1Data() {
+  const data = await fetchWithRetry('https://zo-devnet.n1.xyz/markets/live');
+  const markets = data?.markets;
+  if (!Array.isArray(markets)) return { volume: null, openInterest: null };
+
+  return sumRows(markets, {
+    volume: (market) => market.historical?.volumeQuote24h,
+    openInterest: (market) => {
+      const quantity = toFiniteNumber(market.perpetuals?.openInterest);
+      const price = toFiniteNumber(market.perpetuals?.markPrice);
+      return quantity != null && price != null ? quantity * price : null;
+    },
+    predicate: (market) => market.frozen !== true,
+  });
+}
 
 // ============================================================================
 // REGISTRY
@@ -424,7 +509,7 @@ const ADAPTERS = [
   ['Aster', asterData],
   ['Pacifica', pacificaData],
   ['Variational', variationalData],
-  ['Decibel', decibelData],
+  ['Tread.fi', treadData],
   ['StandX', standxData],
   ['Nado', nadoData],
   ['Hibachi', hibachiData],
@@ -443,16 +528,11 @@ const ADAPTERS = [
 ];
 
 const UNAVAILABLE_REASONS = {
-  Decibel: 'The documented market-data endpoints require an Aptos Node API key.',
-  Nado: 'The former v2 response contract is unverified; it is excluded until a live public USD schema is confirmed.',
-  QFEX: '`startingOpenInterest` is candle-start data, not current USD open interest.',
+  'Tread.fi': 'Tread.fi is an account-specific execution platform, not a venue with public aggregate volume/OI.',
+  QFEX: 'Its documented aggregate endpoint rejected valid time windows during live verification; it remains excluded until the public contract is stable.',
   GRVT: 'No public bulk volume/OI endpoint has been verified.',
-  Hotstuff: 'No public market-data endpoint has been verified.',
-  RISEx: 'No public market-data endpoint has been verified.',
-  TrueNorth: 'No public market-data endpoint has been verified.',
-  Arcus: 'No public market-data endpoint has been verified.',
+  TrueNorth: 'TrueNorth is an AI trading-intelligence platform, not a perp venue with its own volume/OI.',
   GMTrade: 'No public market-data endpoint has been verified.',
-  N1: 'The tracked protocol is migrating; the former public market API is no longer reliable.',
 };
 
 // ============================================================================

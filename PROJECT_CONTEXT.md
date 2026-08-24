@@ -80,10 +80,10 @@ public/
 ## Ключові архітектурні рішення (і чому саме так)
 
 ### 1. DeFiLlama Derivatives (volume/OI) — Pro-only, НЕ використовується
-Підтверджено багаторазово (офіційна документація + незалежні джерела):
-`/overview/derivatives` і навіть per-protocol `/v2/chart/derivatives/...`
-коштують $300/міс. TVL (`/protocol/{slug}`) — безкоштовний, досі
-використовується для сторінки Projects.
+`/overview/derivatives` повертає HTTP 402 без paid plan. Спроба server-side
+парсингу публічної `/perps` сторінки повертає HTTP 403, тож це не стабільний
+fallback для Vercel і не доданий у production. TVL (`/protocol/{slug}`) —
+безкоштовний і досі використовується для сторінки Projects.
 
 ### 2. Volume + Open Interest — прямі API бірж, через /api/derivatives.js
 Через CORS усе йде через serverless-проксі. Список із 20 бірж — з
@@ -95,9 +95,9 @@ public/
 | Статус | Біржі | Деталі |
 |---|---|---|
 | **Працювали на live-deploy до цієї сесії** | Hyperliquid, edgeX, Aster, Pacifica, Variational, StandX | Volume: усі шість; OI: усі, крім Aster |
-| **Виправлено / додано, API перевірено живою відповіддю** | Hibachi, Lighter, Extended, Reya | Volume + OI. Hibachi множить base OI на mark price; Reya множить `oiQty` на co-timestamped oracle price; Lighter і Extended повертають USD/USDC notional напряму. Потрібна остаточна перевірка після Vercel deploy. |
-| **Свідомо вимкнені, щоб не показувати некоректні числа** | Nado, QFEX, Decibel | Nado: старий response contract не підтверджений; QFEX: `startingOpenInterest` не є поточним USD OI; Decibel вимагає Aptos Node API key для market data. |
-| **Заглушки, чекають на перевірений публічний API** | GRVT, Hotstuff, RISEx, TrueNorth, Arcus, GMTrade, N1 | Реєстр повертає `null`, а `meta.*Sources[].reason` пояснює причину. Не вигадувати endpoint чи одиниці виміру. |
+| **Виправлено / додано, API перевірено живою відповіддю** | Hibachi, Lighter, Extended, Reya, Nado, Hotstuff, RISEx, Arcus, N1 | Volume + OI. N1 використовує офіційний Nord devnet bulk API; Nado та Arcus повертають USD volume напряму; Hibachi, Reya, Hotstuff, RISEx, Arcus і N1 множать base OI на co-timestamped mark/oracle price; Lighter і Extended повертають USD/USDC notional напряму. Потрібна остаточна перевірка після Vercel deploy. |
+| **Свідомо вимкнені, щоб не показувати некоректні числа** | QFEX, Tread.fi | QFEX: спеціальний public aggregate endpoint відхилив валідні часові вікна під час live-перевірки; Tread.fi — account-specific execution/OEMS, не окрема біржа, тому додавання її обсягів подвоїло б дані підключених venues. |
+| **Заглушки, чекають на перевірений публічний API** | GRVT, GMTrade | Реєстр повертає `null`, а `meta.*Sources[].reason` пояснює причину. TrueNorth — AI data platform, не perp venue, тому теж лишається поза агрегатами. Не вигадувати endpoint чи одиниці виміру. |
 
 **Volume та OI тепер НЕЗАЛЕЖНІ по кожній біржі** — біржа може дати volume,
 але не OI (як-от Aster), і навпаки. Обидва рахуються й агрегуються окремо.
@@ -161,10 +161,11 @@ Vercel Cron.
 
 ## Що далі (з незавершеного)
 
-1. Задеплоїти та перевірити на живому Vercel: очікування — 10 джерел volume
-   і 9 джерел OI (Aster не дає bulk OI). Звірити суми з UI кожної біржі.
-2. Якщо Hotstuff/QFEX/GRVT/Nado стабілізують публічні API — повернутись
-   і замінити заглушки лише після перевірки полів та USD-одиниць.
+1. Задеплоїти та перевірити на живому Vercel: очікування — 15 джерел volume
+   і 14 джерел OI (Aster не дає bulk OI). N1 — devnet, тому його суми треба
+   показувати окремо від production venues або явно маркувати. Звірити суми з UI кожної біржі.
+2. Якщо QFEX/GRVT стабілізують публічні API — повернутись і замінити
+   заглушки лише після перевірки полів та USD-одиниць.
 3. Місяць 2 з road map: WoW-порівняння обсягів, Farming Difficulty Index
    (потребує історичних снепшотів — інфраструктура ще не збудована)
 4. Naming inconsistency в `projects.json` (RISEx/Rise, Grvt/GRVT,
