@@ -33,7 +33,11 @@
     "defillama_slug": "risex",
     "slug_verified": true,
     "points_status": "live",
-    "notes": "Team goes by RISEx on-chain. Built on RISE Chain (Ethereum L2). TVL confirmed live on DefiLlama (~$15M). No public security audit as of writing"
+    "notes": "Team goes by RISEx on-chain. Built on RISE Chain (Ethereum L2). TVL confirmed live on DefiLlama (~$15M). No public security audit as of writing",
+    "points_snapshot": {
+      "weekday": "tuesday",
+      "time": "14:00"
+    }
   },
   {
     "name": "Variational",
@@ -42,7 +46,11 @@
     "defillama_slug": "variational",
     "slug_verified": true,
     "points_status": "running",
-    "notes": "Obsess over lowering cost per point"
+    "notes": "Obsess over lowering cost per point",
+    "points_snapshot": {
+      "weekday": "friday",
+      "time": "15:00"
+    }
   },
   {
     "name": "TradeHotStuff",
@@ -51,7 +59,11 @@
     "defillama_slug": "hotstuff",
     "slug_verified": true,
     "points_status": "running",
-    "notes": "Relatively young, mixed long-term outlook. Listed as 'Hotstuff' on some trackers — slug is a best guess"
+    "notes": "Relatively young, mixed long-term outlook. Listed as 'Hotstuff' on some trackers — slug is a best guess",
+    "points_snapshot": {
+      "weekday": "monday",
+      "time": "12:00"
+    }
   },
   {
     "name": "Pacifica",
@@ -60,7 +72,11 @@
     "defillama_slug": "pacifica",
     "slug_verified": true,
     "points_status": "late_stage",
-    "notes": "Confirmed live on DefiLlama"
+    "notes": "Confirmed live on DefiLlama",
+    "points_snapshot": {
+      "weekday": "thursday",
+      "time": "00:00"
+    }
   },
   {
     "name": "Nado",
@@ -69,7 +85,11 @@
     "defillama_slug": "nado",
     "slug_verified": true,
     "points_status": "late_stage",
-    "notes": "On Ink chain. Parent protocol aggregating Nado Spot + Nado Perps, confirmed live on DefiLlama"
+    "notes": "On Ink chain. Parent protocol aggregating Nado Spot + Nado Perps, confirmed live on DefiLlama",
+    "points_snapshot": {
+      "weekday": "friday",
+      "time": "14:00"
+    }
   },
   {
     "name": "Hibachi",
@@ -78,7 +98,11 @@
     "defillama_slug": "hibachi",
     "slug_verified": true,
     "points_status": "late_stage",
-    "notes": "ZK-secured perps. Confirmed live on DefiLlama"
+    "notes": "ZK-secured perps. Confirmed live on DefiLlama",
+    "points_snapshot": {
+      "weekday": "monday",
+      "time": "10:00"
+    }
   },
   {
     "name": "GMTrade",
@@ -96,7 +120,11 @@
     "defillama_slug": "01-exchange",
     "slug_verified": true,
     "points_status": "live",
-    "notes": "N1 is currently on devnet. The official Nord bulk API supplies its live devnet perp volume and OI; TVL still does not map to the /protocol endpoint used here."
+    "notes": "N1 is currently on devnet. The official Nord bulk API supplies its live devnet perp volume and OI; TVL still does not map to the /protocol endpoint used here.",
+    "points_snapshot": {
+      "weekday": "friday",
+      "time": "00:00"
+    }
   },
   {
     "name": "StandX",
@@ -105,7 +133,11 @@
     "defillama_slug": "standx-perps",
     "slug_verified": true,
     "points_status": "late_stage",
-    "notes": "On Solana + BNB Chain, DUSD-margined. Confirmed live on DefiLlama"
+    "notes": "On Solana + BNB Chain, DUSD-margined. Confirmed live on DefiLlama",
+    "points_snapshot": {
+      "weekday": "friday",
+      "time": "16:00"
+    }
   },
   {
     "name": "Hyperliquid",
@@ -123,7 +155,11 @@
     "defillama_slug": "lighter",
     "slug_verified": true,
     "points_status": "ended",
-    "notes": "Top-4 perp DEX by OI (~10% market share per Oct 2025 data). Confirmed live on DefiLlama"
+    "notes": "Top-4 perp DEX by OI (~10% market share per Oct 2025 data). Confirmed live on DefiLlama",
+    "points_snapshot": {
+      "weekday": "friday",
+      "time": "13:00"
+    }
   },
   {
     "name": "Aster",
@@ -132,7 +168,11 @@
     "defillama_slug": "aster",
     "slug_verified": true,
     "points_status": "ended",
-    "notes": "Backed by YZi Labs, CZ-linked. Confirmed live on DefiLlama for TVL — but DefiLlama delisted Aster's PERP VOLUME data specifically over wash-trading concerns (volume was mirroring Binance almost exactly). Worth flagging before farming here"
+    "notes": "Backed by YZi Labs, CZ-linked. Confirmed live on DefiLlama for TVL — but DefiLlama delisted Aster's PERP VOLUME data specifically over wash-trading concerns (volume was mirroring Binance almost exactly). Worth flagging before farming here",
+    "points_snapshot": {
+      "weekday": "monday",
+      "time": "00:00"
+    }
   },
   {
     "name": "edgeX",
@@ -159,7 +199,11 @@
     "defillama_slug": "extended",
     "slug_verified": true,
     "points_status": "watch",
-    "notes": "Built by ex-Revolut team, on Starknet + Ethereum. Confirmed live on DefiLlama (~$126M TVL). TGE window confirmed for Q3 2026 per earlier research"
+    "notes": "Built by ex-Revolut team, on Starknet + Ethereum. Confirmed live on DefiLlama (~$126M TVL). TGE window confirmed for Q3 2026 per earlier research",
+    "points_snapshot": {
+      "weekday": "tuesday",
+      "time": "00:00"
+    }
   },
   {
     "name": "Reya",
@@ -168,7 +212,11 @@
     "defillama_slug": "reya",
     "slug_verified": true,
     "points_status": "watch",
-    "notes": "Based-rollup, zk-proofs, 1ms speed claim. Confirmed live on DefiLlama"
+    "notes": "Based-rollup, zk-proofs, 1ms speed claim. Confirmed live on DefiLlama",
+    "points_snapshot": {
+      "weekday": "monday",
+      "time": "12:00"
+    }
   },
   {
     "name": "Tread.fi",

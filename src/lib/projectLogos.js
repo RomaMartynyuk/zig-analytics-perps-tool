@@ -9,6 +9,10 @@ const NAME_ALIASES = {
   risex: 'Rise',
 };
 
+const EXTRA_LOGO_SLUGS = {
+  backpack: 'backpack',
+};
+
 function normalize(str) {
   return str.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
@@ -30,7 +34,6 @@ export function getLogoUrl(name) {
   if (!name) return null;
   const norm = normalize(name);
   const resolvedName = NAME_ALIASES[norm] || name;
-  const slug = slugByNormalizedName[normalize(resolvedName)];
-  if (!slug) return null;
+  const slug = EXTRA_LOGO_SLUGS[norm] || slugByNormalizedName[normalize(resolvedName)]; if (!slug) return null;
   return `/logos/${slug}.png`;
 }

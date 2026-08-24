@@ -56,11 +56,11 @@ api/
 src/
   data/
     projects.json      ← 20 tracked проєктів (джерело правди по tier/category/slug/points_status)
-    mockMetrics.js       ← ще-мокові дані (Snapshots, Tickers) — volume/OI ranking вже РЕАЛЬНІ, не мок
   hooks/
     useProjectsData.js    ← TVL для сторінки Projects
     useDerivativesData.js  ← volume/OI для Dashboard
   lib/
+    pointsSnapshots.js  ← логіка щотижневих points snapshots
     defillama.js       ← клієнт для /api/tvl
     format.js            ← formatUSD/formatStatUSD/formatPercent
     icons.js               ← циклічна палітра акцентів для fallback-іконок
@@ -138,7 +138,10 @@ Vercel Cron.
   не мав мережевого доступу з пісочниці до бірж/CDN, тому все тестувалось
   через мокований `fetch`/Playwright `route()`, а не реальні виклики.
   Перший реальний деплой варто уважно перевірити.
-- **Snapshots (на Dashboard) — досі мок-дані** (`mockMetrics.js`). Last Perps
+- **Upcoming Snapshots** беруться з `points_snapshot` у `projects.json` і
+  повторюються щотижня. Поки кампанія points активна (`points_status: "live"`
+  або `"running"`), у день снепшоту відображається `Points Day` протягом 24 годин,
+  після чого сайт автоматично починає відлік до наступного такого дня. Last Perps
   Tickers — реальні CoinGecko USD price + 24h change для HYPE, LIT, EDGE,
   ASTER, BP і GRVT, одним batched server-side запитом та 60-секундним кешем.
   Volume Ranking і OI Ranking теж реальні.

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 import Sidebar from './components/Sidebar';
@@ -15,7 +15,8 @@ import ProjectIcon from './components/ProjectIcon';
 import { formatUSD, formatPercent, formatTokenPrice } from './lib/format';
 import { useDerivativesData } from './hooks/useDerivativesData';
 import { usePerpsTickers } from './hooks/usePerpsTickers';
-import { upcomingSnapshots } from './data/mockMetrics';
+import projects from './data/projects.json';
+import { formatCountdown, getRecurringSnapshot } from './lib/pointsSnapshots';
 
 import './App.css';
 
@@ -64,6 +65,23 @@ function StatGrid({ data, loading, error }) {
 function Dashboard() {
   const { data, loading, error } = useDerivativesData();
   const { data: tickers, loading: tickersLoading, error: tickersError } = usePerpsTickers();
+  const [snapshotNow, setSnapshotNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => setSnapshotNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const upcomingSnapshots = useMemo(
+    () => projects
+      .map((project) => getRecurringSnapshot(project, snapshotNow))
+      .filter(Boolean)
+      .sort((a, b) => {
+        if (a.isPointsDay !== b.isPointsDay) return a.isPointsDay ? -1 : 1;
+        return (a.scheduledAt ?? a.endsAt) - (b.scheduledAt ?? b.endsAt);
+      }),
+    [snapshotNow]
+  );
 
   // Real Perp Volume ranking — built from the same /api/derivatives call as
   // the stat cards above. Only exchanges whose public API and USD units are
@@ -123,6 +141,7 @@ function Dashboard() {
         <RankingList
           title="Upcoming Snapshots"
           items={upcomingSnapshots}
+          emptyMessage="Add a recurring points day in projects.json to show it here."
           renderRow={(p, i) => (
             <>
               <div className="row-left">
@@ -130,8 +149,7 @@ function Dashboard() {
                 <span className="row-name">{p.name}</span>
               </div>
               <span className="row-value mono">
-                {String(p.days).padStart(2, '0')}d:{String(p.hours).padStart(2, '0')}h:
-                {String(p.minutes).padStart(2, '0')}m
+                {p.isPointsDay ? 'Points Day' : formatCountdown(p.scheduledAt, snapshotNow)}
               </span>
             </>
           )}

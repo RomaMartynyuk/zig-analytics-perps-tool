@@ -31,7 +31,7 @@ login`, then it serves both frontend and `/api` correctly).
 
 **Homepage (Dashboard)** — matches the approved mockup 1:1: stat cards
 (Perp Volume 24h/7d/30d, Open Interest), Perps Volume Graph placeholder,
-Perp Volume / Open Interest rankings, Upcoming Snapshots, Last News
+Perp Volume / Open Interest rankings, recurring Upcoming Snapshots, Last News
 placeholder, Last Perps Tickers. All list cards scroll internally with a
 custom thin scrollbar once content overflows.
 
@@ -42,7 +42,8 @@ content). Two sections have real content:
 - **Dashboard** — stat cards + Perp Volume/OI rankings and Last Perps Tickers
   are **real, live data**. The ticker card uses one batched CoinGecko request
   for HYPE, LIT, EDGE, ASTER, BP and GRVT, ordered by live USD price. Perps
-  Volume Graph, Upcoming Snapshots and Last News are still placeholders.
+  Volume Graph and Last News are still placeholders. Upcoming Snapshots are
+  configured per project in `src/data/projects.json`.
 - **Projects** — live TVL from DeFiLlama for all 20 tracked projects.
 
 News, Analytics, Community, Calendar, and Settings render a "coming soon"
@@ -114,6 +115,29 @@ registry don't always match `projects.json`'s `name` field exactly
 `src/lib/projectLogos.js` has a `NAME_ALIASES` map bridging these. Keep it
 in sync if you add a new exchange with a similarly mismatched name.
 
+## Configuring weekly points snapshots
+
+Add `points_snapshot` to the relevant project in
+`src/data/projects.json`. `weekday` is required and must be an English weekday:
+`monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`, or
+`sunday`. `time` defaults to `00:00`, and `timezone` defaults to `UTC`.
+
+```json
+{
+  "name": "Example Exchange",
+  "points_status": "live",
+  "points_snapshot": {
+    "weekday": "wednesday",
+    "time": "14:00",
+    "timezone": "UTC"
+  }
+}
+```
+
+Only projects with `points_status` set to `live` or `running` appear in the
+card. At the configured weekly time, the row displays `Points Day` for 24 hours;
+then it automatically begins counting down to the following week.
+
 ## Project structure
 
 ```
@@ -124,11 +148,11 @@ api/
 src/
   data/
     projects.json          ← 20 tracked projects (tier, category, slug, points status)
-    mockMetrics.js            ← still-placeholder data (Snapshots) — volume/OI rankings and ticker prices are real now
   hooks/
     useProjectsData.js        ← TVL for the Projects page
     useDerivativesData.js       ← volume/OI for the Dashboard
   lib/
+    pointsSnapshots.js       ← recurring weekly points-snapshot countdown logic
     defillama.js             ← client for /api/tvl
     format.js                   ← number/percent formatting
     icons.js                      ← accent color cycling (fallback icon backgrounds)
