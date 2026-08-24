@@ -46,8 +46,9 @@ content). Two sections have real content:
   Last News is still a placeholder. Upcoming Snapshots are
   configured per project in `src/data/projects.json`.
 - **Projects** — live TVL from DeFiLlama for all 20 tracked projects.
-- **Predictions** — a grid of one card per tracked perp, ready for the future
-  price-per-point prediction model. It intentionally does not display invented forecasts.
+- **Predictions** — Point Value Lab shows projects with a live points campaign
+  or configured snapshot. Every card has a user-controlled price-per-point
+  estimate (`FDV ÷ total points`) and a reserved PolyMarket forecast field.
 
 News, Analytics, Calendar, and Settings render a "coming soon"
 placeholder — routing and animation work, those pages just need content.
