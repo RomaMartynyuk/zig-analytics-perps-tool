@@ -95,9 +95,10 @@ fallback для Vercel і не доданий у production. TVL (`/protocol/{sl
 | Статус | Біржі | Деталі |
 |---|---|---|
 | **Працювали на live-deploy до цієї сесії** | Hyperliquid, edgeX, Aster, Pacifica, Variational, StandX | Volume: усі шість; OI: усі, крім Aster |
-| **Виправлено / додано, API перевірено живою відповіддю** | Hibachi, Lighter, Extended, Reya, Nado, Hotstuff, RISEx, Arcus, N1 | Volume + OI. N1 використовує офіційний Nord devnet bulk API; Nado та Arcus повертають USD volume напряму; Hibachi, Reya, Hotstuff, RISEx, Arcus і N1 множать base OI на co-timestamped mark/oracle price; Lighter і Extended повертають USD/USDC notional напряму. Потрібна остаточна перевірка після Vercel deploy. |
-| **Свідомо вимкнені, щоб не показувати некоректні числа** | QFEX, Tread.fi | QFEX: спеціальний public aggregate endpoint відхилив валідні часові вікна під час live-перевірки; Tread.fi — account-specific execution/OEMS, не окрема біржа, тому додавання її обсягів подвоїло б дані підключених venues. |
-| **Заглушки, чекають на перевірений публічний API** | GRVT, GMTrade | Реєстр повертає `null`, а `meta.*Sources[].reason` пояснює причину. TrueNorth — AI data platform, не perp venue, тому теж лишається поза агрегатами. Не вигадувати endpoint чи одиниці виміру. |
+| **Виправлено / додано, API перевірено живою відповіддю** | Hibachi, Lighter, Extended, Reya, Nado, RISEx, Arcus | Volume + OI. Nado та Arcus повертають USD volume напряму; Hibachi, Reya, RISEx і Arcus множать base OI на co-timestamped mark/oracle price; Lighter і Extended повертають USD/USDC notional напряму. Потрібна остаточна перевірка після Vercel deploy. |
+| **Додано з контрольованим per-market fan-out** | GRVT | Лише Volume: активні perpetual інструменти + один derived ticker на ринок, concurrency 4, outer-cache 75 хв. OI не додається. |
+| **Свідомо вимкнені, щоб не показувати некоректні числа** | Hotstuff, N1, QFEX, Tread.fi | Hotstuff і N1 виключені на запит користувача; N1 доступний лише як devnet. QFEX відхилив валідні часові вікна; Tread.fi — account-specific execution/OEMS, не окрема біржа. |
+| **Заглушки, чекають на перевірений публічний API** | GMTrade | Реєстр повертає `null`, а `meta.*Sources[].reason` пояснює причину. TrueNorth — AI data platform, не perp venue, тому теж лишається поза агрегатами. Не вигадувати endpoint чи одиниці виміру. |
 
 **Volume та OI тепер НЕЗАЛЕЖНІ по кожній біржі** — біржа може дати volume,
 але не OI (як-от Aster), і навпаки. Обидва рахуються й агрегуються окремо.
@@ -161,9 +162,8 @@ Vercel Cron.
 
 ## Що далі (з незавершеного)
 
-1. Задеплоїти та перевірити на живому Vercel: очікування — 15 джерел volume
-   і 14 джерел OI (Aster не дає bulk OI). N1 — devnet, тому його суми треба
-   показувати окремо від production venues або явно маркувати. Звірити суми з UI кожної біржі.
+1. Задеплоїти та перевірити на живому Vercel: очікування — 14 джерел volume
+   і 12 джерел OI (Aster і GRVT не дають OI). Звірити суми з UI кожної біржі.
 2. Якщо QFEX/GRVT стабілізують публічні API — повернутись і замінити
    заглушки лише після перевірки полів та USD-одиниць.
 3. Місяць 2 з road map: WoW-порівняння обсягів, Farming Difficulty Index

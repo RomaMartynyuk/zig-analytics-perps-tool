@@ -410,35 +410,53 @@ async function qfexData() { return { volume: null, openInterest: null }; }
 // STILL UNAVAILABLE — no verified, low-request public aggregation path
 // ============================================================================
 
-async function grvtData() { return { volume: null, openInterest: null }; } // per-instrument only, see project history
-
-// --- Hotstuff --------------------------------------------------------------
-// A single POST with `symbol: all` returns all perpetual tickers. Both
-// `volume_24h` and `open_interest` are base-asset quantities, so each is
-// converted using the co-timestamped mark price before summing.
-async function hotstuffData() {
-  const data = await fetchWithRetry('https://api.hotstuff.trade/info', {
+// --- GRVT ------------------------------------------------------------------
+// GRVT has no aggregate ticker: fetch its active perpetual instrument list,
+// then one derived ticker per market. The 75-minute outer cache means this
+// fan-out happens at most once per warm instance per refresh window. Keep
+// concurrency deliberately low (4) to avoid a burst against the venue.
+// `buy_volume_24h_q` + `sell_volume_24h_q` are the two taker directions in
+// quote (USDT) notional, so together are the market's 24h traded volume.
+async function grvtData() {
+  const instrumentsData = await fetchWithRetry('https://market-data.grvt.io/full/v1/all_instruments', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ method: 'ticker', params: { symbol: 'all' } }),
+    body: JSON.stringify({ is_active: true, kinds: ['PERPETUAL'] }),
   });
-  const markets = Array.isArray(data) ? data : data?.data;
-  if (!Array.isArray(markets)) return { volume: null, openInterest: null };
+  const instruments = instrumentsData?.result;
+  if (!Array.isArray(instruments)) return { volume: null, openInterest: null };
 
-  return sumRows(markets, {
-    volume: (market) => {
-      const quantity = toFiniteNumber(market.volume_24h);
-      const price = toFiniteNumber(market.mark_price);
-      return quantity != null && price != null ? quantity * price : null;
-    },
-    openInterest: (market) => {
-      const quantity = toFiniteNumber(market.open_interest);
-      const price = toFiniteNumber(market.mark_price);
-      return quantity != null && price != null ? quantity * price : null;
-    },
-    predicate: (market) => market.type === 'perp',
+  const marketNames = instruments
+    .filter((instrument) => instrument.kind === 'PERPETUAL')
+    .map((instrument) => instrument.instrument)
+    .filter(Boolean);
+  if (!marketNames.length) return { volume: null, openInterest: null };
+
+  const tickers = await mapWithConcurrency(marketNames, 4, async (instrument) => {
+    const data = await fetchWithRetry('https://market-data.grvt.io/full/v1/ticker', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ instrument, derived: true }),
+    });
+    return data?.result ?? null;
   });
+
+  let volume = 0;
+  let anyVolume = false;
+  for (const ticker of tickers) {
+    const buyVolume = toFiniteNumber(ticker?.buy_volume_24h_q);
+    const sellVolume = toFiniteNumber(ticker?.sell_volume_24h_q);
+    if (buyVolume != null && sellVolume != null) {
+      volume += buyVolume + sellVolume;
+      anyVolume = true;
+    }
+  }
+  return { volume: anyVolume ? volume : null, openInterest: null };
 }
+
+// Hotstuff's public response has proved unreliable in production. Keep it
+// registered, but make no upstream call until its API contract is stable.
+async function hotstuffData() { return { volume: null, openInterest: null }; }
 
 // --- RISEx -----------------------------------------------------------------
 // The public markets endpoint is already a complete market snapshot. Quote
@@ -480,25 +498,9 @@ async function arcusData() {
 }
 async function gmTradeData() { return { volume: null, openInterest: null }; }
 
-// --- N1 (Nord) -------------------------------------------------------------
-// The official Nord API's one bulk endpoint returns every live market. N1 is
-// currently in devnet, so these are explicitly its devnet market metrics;
-// quote volume and mark prices are USD-denominated for the listed perps.
-async function n1Data() {
-  const data = await fetchWithRetry('https://zo-devnet.n1.xyz/markets/live');
-  const markets = data?.markets;
-  if (!Array.isArray(markets)) return { volume: null, openInterest: null };
-
-  return sumRows(markets, {
-    volume: (market) => market.historical?.volumeQuote24h,
-    openInterest: (market) => {
-      const quantity = toFiniteNumber(market.perpetuals?.openInterest);
-      const price = toFiniteNumber(market.perpetuals?.markPrice);
-      return quantity != null && price != null ? quantity * price : null;
-    },
-    predicate: (market) => market.frozen !== true,
-  });
-}
+// N1 currently exposes only devnet metrics. Exclude them from production
+// venue totals while retaining the source in the tracked-project registry.
+async function n1Data() { return { volume: null, openInterest: null }; }
 
 // ============================================================================
 // REGISTRY
@@ -530,9 +532,11 @@ const ADAPTERS = [
 const UNAVAILABLE_REASONS = {
   'Tread.fi': 'Tread.fi is an account-specific execution platform, not a venue with public aggregate volume/OI.',
   QFEX: 'Its documented aggregate endpoint rejected valid time windows during live verification; it remains excluded until the public contract is stable.',
-  GRVT: 'No public bulk volume/OI endpoint has been verified.',
+  GRVT: 'Volume is fetched per market; GRVT does not yet contribute open interest.',
+  Hotstuff: 'Excluded at the user’s request because its API response is unreliable.',
   TrueNorth: 'TrueNorth is an AI trading-intelligence platform, not a perp venue with its own volume/OI.',
   GMTrade: 'No public market-data endpoint has been verified.',
+  N1: 'Excluded at the user’s request: the available Nord endpoint reports devnet-only metrics.',
 };
 
 // ============================================================================

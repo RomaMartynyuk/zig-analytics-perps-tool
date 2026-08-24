@@ -63,9 +63,10 @@ Numbers are included only after the public API and USD units were verified.
 | Status | Exchanges | Notes |
 |---|---|---|
 | **Live baseline** | Hyperliquid, edgeX, Aster, Pacifica, Variational, StandX | Volume for all 6; OI for all except Aster. |
-| **Verified adapters** | Hibachi, Lighter, Extended, Reya, Nado, Hotstuff, RISEx, Arcus, N1 | Volume + OI. N1 is explicitly devnet data. Nado and Arcus return USD volume directly; Hibachi/Reya/Hotstuff/RISEx/Arcus/N1 convert base OI to USD per market; Lighter/Extended return USD/USDC notionals directly. |
-| **Intentionally unavailable** | QFEX, Tread.fi | QFEX's aggregate endpoint failed live contract validation; Tread.fi is an account-specific execution platform, not an independent venue. |
-| **Awaiting a verified public API** | GRVT, GMTrade | Return `null` with a diagnostic reason in the API metadata. TrueNorth is an AI data platform, not a perp venue, so it is intentionally excluded. |
+| **Verified adapters** | Hibachi, Lighter, Extended, Reya, Nado, RISEx, Arcus | Volume + OI. Nado and Arcus return USD volume directly; Hibachi/Reya/RISEx/Arcus convert base OI to USD per market; Lighter/Extended return USD/USDC notionals directly. |
+| **Controlled per-market adapter** | GRVT | Volume only: active perpetual instruments plus a derived ticker per market, concurrency limited to 4 and refreshed at most every 75 minutes per warm instance. |
+| **Intentionally unavailable** | Hotstuff, N1, QFEX, Tread.fi | Hotstuff and N1 are excluded at the user's request. QFEX's aggregate endpoint failed live contract validation; Tread.fi is an account-specific execution platform, not an independent venue. |
+| **Awaiting a verified public API** | GMTrade | Returns `null` with a diagnostic reason in API metadata. TrueNorth is an AI data platform, not a perp venue, so it is intentionally excluded. |
 
 Volume and OI are tracked **independently per exchange** — a source can
 report one without the other.
