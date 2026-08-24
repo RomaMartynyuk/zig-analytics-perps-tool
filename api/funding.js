@@ -122,7 +122,9 @@ export default async function handler(req, res) {
         if (Number.isFinite(fundingRate) && Number.isFinite(intervalSeconds) && intervalSeconds > 0) {
           addRate(normalizeSymbol(listing.ticker), {
             venue: 'Variational',
-            rate8h: fundingRate * (28_800 / intervalSeconds),
+            // Omni returns this field in percentage points (e.g. "-4.437974"
+            // means -4.437974%), whereas the other feeds use decimal rates.
+            rate8h: (fundingRate / 100) * (28_800 / intervalSeconds),
             intervalHours: intervalSeconds / 3600,
           });
         }
