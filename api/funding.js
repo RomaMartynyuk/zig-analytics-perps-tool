@@ -1,46 +1,84 @@
-// Vercel Serverless Function — one bulk Hyperliquid request compares predicted
-// funding for the same markets across Hyperliquid, Binance and Bybit.
-// Rates are normalized to an 8-hour basis before reaching the client.
+// Vercel Serverless Function — combines two public bulk feeds. Lighter's
+// funding-rates feed already supplies 8h-equivalent rates for Lighter and
+// reference venues; Aster's rate is normalized with its per-market interval.
 
-const VENUES = {
-  HlPerp: 'Hyperliquid',
-  BinPerp: 'Binance',
-  BybitPerp: 'Bybit',
+const LIGHTER_VENUES = {
+  lighter: 'Lighter',
+  hyperliquid: 'Hyperliquid',
+  binance: 'Binance',
+  bybit: 'Bybit',
 };
+
+function normalizeSymbol(symbol) {
+  return String(symbol || '').replace(/(?:USDT|USD)$/, '');
+}
+
+async function fetchJson(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Funding source failed: ${response.status}`);
+  return response.json();
+}
 
 export default async function handler(req, res) {
   try {
-    const upstream = await fetch('https://api.hyperliquid.xyz/info', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'predictedFundings' }),
-    });
-    if (!upstream.ok) return res.status(upstream.status).json({ error: 'Funding data request failed' });
+    const [lighterResult, asterPremiumResult, asterInfoResult] = await Promise.allSettled([
+      fetchJson('https://mainnet.zklighter.elliot.ai/api/v1/funding-rates'),
+      fetchJson('https://fapi.asterdex.com/fapi/v1/premiumIndex'),
+      fetchJson('https://fapi.asterdex.com/fapi/v1/fundingInfo'),
+    ]);
 
-    const payload = await upstream.json();
-    if (!Array.isArray(payload)) return res.status(502).json({ error: 'Invalid funding data response' });
+    const ratesBySymbol = new Map();
+    const addRate = (symbol, rate) => {
+      if (!symbol || !Number.isFinite(rate.rate8h)) return;
+      const rates = ratesBySymbol.get(symbol) || [];
+      const duplicateIndex = rates.findIndex((item) => item.venue === rate.venue);
+      if (duplicateIndex >= 0) rates[duplicateIndex] = rate;
+      else rates.push(rate);
+      ratesBySymbol.set(symbol, rates);
+    };
 
-    const markets = payload.flatMap(([symbol, venueRates]) => {
-      const rates = (Array.isArray(venueRates) ? venueRates : []).flatMap(([venueId, rate]) => {
-        const intervalHours = Number(rate?.fundingIntervalHours);
-        const fundingRate = Number(rate?.fundingRate);
-        if (!VENUES[venueId] || !Number.isFinite(fundingRate) || !Number.isFinite(intervalHours) || intervalHours <= 0) {
-          return [];
+    const hasLighterFeed = lighterResult.status === 'fulfilled';
+    const hasAsterFeed = asterPremiumResult.status === 'fulfilled' && asterInfoResult.status === 'fulfilled';
+
+    if (hasLighterFeed) {
+      for (const row of lighterResult.value?.funding_rates || []) {
+        const venue = LIGHTER_VENUES[row.exchange];
+        const rate8h = Number(row.rate);
+        if (venue && Number.isFinite(rate8h)) {
+          addRate(normalizeSymbol(row.symbol), { venue, rate8h, intervalHours: 8 });
         }
+      }
+    }
 
-        return [{
-          venue: VENUES[venueId],
-          rate8h: fundingRate * (8 / intervalHours),
-          intervalHours,
-          nextFundingTime: Number(rate?.nextFundingTime) || null,
-        }];
-      });
+    if (hasAsterFeed) {
+      const intervalBySymbol = new Map(
+        (asterInfoResult.value || []).map((row) => [row.symbol, Number(row.fundingIntervalHours)])
+      );
+      for (const row of asterPremiumResult.value || []) {
+        const intervalHours = intervalBySymbol.get(row.symbol);
+        const fundingRate = Number(row.lastFundingRate);
+        if (Number.isFinite(fundingRate) && Number.isFinite(intervalHours) && intervalHours > 0) {
+          addRate(normalizeSymbol(row.symbol), {
+            venue: 'Aster',
+            rate8h: fundingRate * (8 / intervalHours),
+            intervalHours,
+            nextFundingTime: Number(row.nextFundingTime) || null,
+          });
+        }
+      }
+    }
 
+    const markets = [...ratesBySymbol.entries()].flatMap(([symbol, rates]) => {
       if (rates.length < 2) return [];
       const low = rates.reduce((best, rate) => rate.rate8h < best.rate8h ? rate : best);
       const high = rates.reduce((best, rate) => rate.rate8h > best.rate8h ? rate : best);
-      return [{ symbol, rates, low, high, spread8h: high.rate8h - low.rate8h }];
-    }).filter((market) => market.spread8h > 0).sort((a, b) => b.spread8h - a.spread8h);
+      const spread8h = high.rate8h - low.rate8h;
+      return spread8h > 0 ? [{ symbol, rates, low, high, spread8h }] : [];
+    }).sort((a, b) => b.spread8h - a.spread8h);
+
+    if (!hasLighterFeed && !hasAsterFeed) {
+      return res.status(502).json({ error: 'Funding data request failed' });
+    }
 
     res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
     return res.status(200).json({ markets, updatedAt: new Date().toISOString() });

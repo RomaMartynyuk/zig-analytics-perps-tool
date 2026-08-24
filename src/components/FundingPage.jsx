@@ -74,7 +74,7 @@ export default function FundingPage() {
       </div>
 
       <p className="page-note">
-        Source: Hyperliquid predicted funding feed. Funding intervals differ by venue; rates above are converted to an 8-hour equivalent for comparison. Last update: {updatedAt ? new Date(updatedAt).toLocaleTimeString('en-GB', { timeZone: 'UTC' }) + ' UTC' : '—'}.
+        Sources: Lighter and Aster public funding feeds. Funding intervals differ by venue; rates above are converted to an 8-hour equivalent for comparison. Last update: {updatedAt ? new Date(updatedAt).toLocaleTimeString('en-GB', { timeZone: 'UTC' }) + ' UTC' : '—'}.
       </p>
     </section>
   );
