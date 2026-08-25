@@ -49,6 +49,8 @@ content). Two sections have real content:
 - **Predictions** — Point Value Lab shows projects with a live points campaign
   or configured snapshot. Every card has a user-controlled price-per-point
   estimate (`FDV ÷ total points`) and a reserved PolyMarket forecast field.
+  Its Lighter Robinhood campaign card uses the live LIT price and the separate
+  formula `11M LIT value ÷ (65,000 × selected weeks)`.
 
 News, Analytics, Calendar, and Settings render a "coming soon"
 placeholder — routing and animation work, those pages just need content.

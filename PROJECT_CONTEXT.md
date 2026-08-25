@@ -151,7 +151,8 @@ Vercel Cron.
 - **Predictions / Point Value Lab** — grid лише для проєктів з активною
   points-кампанією або `points_snapshot`. У картці користувач керує total
   points і FDV, а прогноз рахується як `FDV ÷ total points`; PolyMarket поле
-  зарезервоване до появи джерела даних.
+  зарезервоване до появи джерела даних. Lighter має окрему вкладену картку
+  Robinhood campaign: `11M LIT × live LIT price ÷ (65,000 × weeks)`.
 - **News-картка — порожній стан**, RSS/новини не підключені (Фаза 3
   оригінального плану).
 - **Сторінки News/Analytics/Calendar/Settings у sidebar** —

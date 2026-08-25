@@ -580,6 +580,60 @@
   font-size: 13px;
   font-weight: 500;
 }
+.prediction-defaults {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  margin-bottom: 18px;
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+.prediction-defaults p {
+  margin-top: 4px;
+  color: var(--ink-faint);
+  font-size: 10.5px;
+  font-weight: 500;
+}
+.prediction-default-controls {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) minmax(130px, 1fr) auto;
+  align-items: end;
+  gap: 14px;
+}
+.prediction-default-controls label > span,
+.prediction-controls label > span,
+.lighter-duration-control > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--ink-soft);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.prediction-default-controls label > span strong,
+.prediction-controls label > span strong,
+.lighter-duration-control > span strong { color: var(--ink); }
+.prediction-default-controls input[type='range'],
+.prediction-controls input[type='range'],
+.lighter-duration-control input[type='range'] {
+  width: 100%;
+  height: 4px;
+  margin-top: 7px;
+  accent-color: var(--accent-3);
+  cursor: pointer;
+}
+.prediction-apply-defaults {
+  border: 0;
+  border-radius: 999px;
+  background: var(--sidebar);
+  color: var(--sidebar-ink);
+  padding: 9px 12px;
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
 .predictions-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -658,21 +712,45 @@
   margin-top: auto;
   padding-top: 16px;
 }
-.prediction-controls label > span {
+.lighter-prediction-card { min-height: 312px; }
+.robinhood-campaign {
+  margin-top: 18px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(241, 235, 221, .55);
+}
+.robinhood-heading {
   display: flex;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
+}
+.robinhood-heading span {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+.robinhood-heading small {
+  color: var(--ink-faint);
+  font-size: 9px;
+  font-weight: 500;
+}
+.robinhood-equation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 5px;
+  margin-top: 11px;
   color: var(--ink-soft);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
 }
-.prediction-controls label > span strong { color: var(--ink); }
-.prediction-controls input[type='range'] {
-  width: 100%;
-  height: 4px;
-  margin-top: 7px;
-  accent-color: var(--accent-3);
-  cursor: pointer;
+.robinhood-equation strong { color: var(--ink); }
+.lighter-user-forecast { margin-top: 12px; }
+.lighter-duration-control {
+  display: block;
+  margin-top: 13px;
 }
 .funding-heading {
   display: flex;
@@ -823,6 +901,13 @@
   .predictions-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .prediction-defaults {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .prediction-default-controls {
+    width: 100%;
+  }
 }
 @media (max-width: 720px) {
   .app-shell {
@@ -866,6 +951,12 @@
   }
   .predictions-grid {
     grid-template-columns: 1fr;
+  }
+  .prediction-default-controls {
+    grid-template-columns: 1fr;
+  }
+  .prediction-apply-defaults {
+    justify-self: start;
   }
   .funding-refresh {
     align-self: flex-start;
