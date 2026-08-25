@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import {
+  LayoutGrid,
   BarChart3,
   Building2,
   Percent,
@@ -7,6 +8,7 @@ import {
 } from 'lucide-react';
 
 const NAV_ITEMS = [
+  { id: 'dashboard', label: 'Home', icon: LayoutGrid },
   { id: 'predictions', label: 'Points', icon: TrendingUp },
   { id: 'funding', label: 'Funding', icon: Percent },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
