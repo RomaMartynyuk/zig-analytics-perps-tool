@@ -168,11 +168,7 @@
     "defillama_slug": "aster",
     "slug_verified": true,
     "points_status": "ended",
-    "notes": "Backed by YZi Labs, CZ-linked. Confirmed live on DefiLlama for TVL — but DefiLlama delisted Aster's PERP VOLUME data specifically over wash-trading concerns (volume was mirroring Binance almost exactly). Worth flagging before farming here",
-    "points_snapshot": {
-      "weekday": "monday",
-      "time": "00:00"
-    }
+    "notes": "Backed by YZi Labs, CZ-linked. Confirmed live on DefiLlama for TVL — but DefiLlama delisted Aster's PERP VOLUME data specifically over wash-trading concerns (volume was mirroring Binance almost exactly). Worth flagging before farming here"
   },
   {
     "name": "edgeX",
