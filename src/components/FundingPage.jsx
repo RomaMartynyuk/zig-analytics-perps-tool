@@ -18,7 +18,8 @@ export default function FundingPage() {
     <section className="funding-page">
       <div className="funding-heading">
         <div>
-          <h1>Funding Differences</h1>
+          <span className="funding-kicker">Market signals · 02</span>
+          <h1>Funding Scanner</h1>
           <p>Compare predicted funding across perpetual exchanges, normalized to 8 hours.</p>
         </div>
         <button className="funding-refresh" type="button" onClick={refetch} disabled={loading}>
@@ -80,7 +81,7 @@ export default function FundingPage() {
       </div>
 
       <p className="page-note">
-        Sources: Lighter, Aster, Variational, Pacifica and edgeX public funding feeds. edgeX is limited to eight shared liquid markets because its API requires one request per contract. Funding intervals differ by venue; rates above are converted to an 8-hour equivalent for comparison. APR is a simple annualization of the 8h spread (×3×365), not a guaranteed return. Last update: {updatedAt ? new Date(updatedAt).toLocaleTimeString('en-GB', { timeZone: 'UTC' }) + ' UTC' : '—'}.
+        Sources: Lighter, Aster, Pacifica and edgeX public funding feeds. edgeX is limited to eight shared liquid markets because its API requires one request per contract. Funding intervals differ by venue; rates above are converted to an 8-hour equivalent for comparison. APR is a simple annualization of the 8h spread (×3×365), not a guaranteed return. Last update: {updatedAt ? new Date(updatedAt).toLocaleTimeString('en-GB', { timeZone: 'UTC' }) + ' UTC' : '—'}.
       </p>
     </section>
   );

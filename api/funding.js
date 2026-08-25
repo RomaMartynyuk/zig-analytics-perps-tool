@@ -65,11 +65,10 @@ async function fetchEdgeXRates() {
 
 export default async function handler(req, res) {
   try {
-    const [lighterResult, asterPremiumResult, asterInfoResult, variationalResult, pacificaResult, edgeXResult] = await Promise.allSettled([
+    const [lighterResult, asterPremiumResult, asterInfoResult, pacificaResult, edgeXResult] = await Promise.allSettled([
       fetchJson('https://mainnet.zklighter.elliot.ai/api/v1/funding-rates'),
       fetchJson('https://fapi.asterdex.com/fapi/v1/premiumIndex'),
       fetchJson('https://fapi.asterdex.com/fapi/v1/fundingInfo'),
-      fetchJson('https://omni-client-api.prod.ap-northeast-1.variational.io/metadata/stats'),
       fetchJson('https://api.pacifica.fi/api/v1/info'),
       fetchEdgeXRates(),
     ]);
@@ -115,22 +114,6 @@ export default async function handler(req, res) {
       }
     }
 
-    if (variationalResult.status === 'fulfilled') {
-      for (const listing of variationalResult.value?.listings || []) {
-        const fundingRate = Number(listing.funding_rate);
-        const intervalSeconds = Number(listing.funding_interval_s);
-        if (Number.isFinite(fundingRate) && Number.isFinite(intervalSeconds) && intervalSeconds > 0) {
-          addRate(normalizeSymbol(listing.ticker), {
-            venue: 'Variational',
-            // Live Omni values are basis points (e.g. "-4.437974" means
-            // -4.437974 bps), whereas the other feeds use decimal rates.
-            rate8h: (fundingRate / 10_000) * (28_800 / intervalSeconds),
-            intervalHours: intervalSeconds / 3600,
-          });
-        }
-      }
-    }
-
     if (pacificaResult.status === 'fulfilled') {
       for (const market of pacificaResult.value?.data || []) {
         const fundingRate = Number(market.next_funding_rate ?? market.funding_rate);
@@ -158,8 +141,7 @@ export default async function handler(req, res) {
       return spread8h > 0 ? [{ symbol, rates, low, high, spread8h }] : [];
     }).sort((a, b) => b.spread8h - a.spread8h);
 
-    const hasAnyFeed = hasLighterFeed || hasAsterFeed || variationalResult.status === 'fulfilled'
-      || pacificaResult.status === 'fulfilled' || edgeXResult.status === 'fulfilled';
+    const hasAnyFeed = hasLighterFeed || hasAsterFeed || pacificaResult.status === 'fulfilled' || edgeXResult.status === 'fulfilled';
     if (!hasAnyFeed) {
       return res.status(502).json({ error: 'Funding data request failed' });
     }

@@ -51,9 +51,29 @@ content). Two sections have real content:
   estimate (`FDV ÷ total points`) and a reserved PolyMarket forecast field.
   Its Lighter Robinhood campaign card uses the live LIT price and the separate
   formula `11M LIT value ÷ (65,000 × selected weeks)`.
+- **Analytics** — an intentionally empty, varied-card canvas ready for future
+  research modules.
 
-News, Analytics, Calendar, and Settings render a "coming soon"
-placeholder — routing and animation work, those pages just need content.
+News, Calendar, Community and Settings are intentionally hidden from the
+sidebar until their content is ready.
+
+### Prediction defaults
+
+Set the initial sliders for each standard campaign directly in its project
+object in `src/data/projects.json`:
+
+```json
+"prediction_defaults": {
+  "points_millions": 1000,
+  "fdv_millions": 100,
+  "user_allocation_percent": 10
+}
+```
+
+`points_millions` and `fdv_millions` are in millions;
+`user_allocation_percent` is the share of the project's FDV allocated to
+users. The user forecast is `(FDV × user allocation) ÷ total points`.
+Lighter uses its dedicated Robinhood formula and does not use these fields.
 
 ## Data sources — what's real, what's not
 

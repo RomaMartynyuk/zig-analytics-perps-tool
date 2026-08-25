@@ -150,13 +150,20 @@ Vercel Cron.
   WoW-динаміка все ще потребує окремого історичного snapshot pipeline.
 - **Predictions / Point Value Lab** — grid лише для проєктів з активною
   points-кампанією або `points_snapshot`. У картці користувач керує total
-  points і FDV, а прогноз рахується як `FDV ÷ total points`; PolyMarket поле
-  зарезервоване до появи джерела даних. Lighter має окрему вкладену картку
+  points, FDV і часткою FDV для користувачів, а прогноз рахується як
+  `(FDV × user allocation) ÷ total points`; PolyMarket поле зарезервоване до
+  появи джерела даних. Lighter має окрему вкладену картку
   Robinhood campaign: `11M LIT × live LIT price ÷ (65,000 × weeks)`.
+- **Prediction defaults** лежать у `projects.json` як
+  `prediction_defaults.points_millions`, `prediction_defaults.fdv_millions` і
+  `prediction_defaults.user_allocation_percent`.
+  Це стартові значення конкретної картки, а не глобальні UI-налаштування.
+- **Analytics** — порожній canvas з картками різних розмірів для майбутніх
+  дослідницьких модулів.
 - **News-картка — порожній стан**, RSS/новини не підключені (Фаза 3
   оригінального плану).
-- **Сторінки News/Analytics/Calendar/Settings у sidebar** —
-  "coming soon"-заглушки, роутинг є, контенту нема.
+- **News/Calendar/Community/Settings** навмисно приховані з sidebar, доки
+  не з'явиться їхній контент.
 
 ## Стиль спілкування з користувачем (важливо для тону відповідей)
 

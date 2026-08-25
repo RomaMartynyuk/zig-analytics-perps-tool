@@ -1,23 +1,18 @@
 import { motion } from 'framer-motion';
 import {
   LayoutGrid,
-  Newspaper,
   BarChart3,
   Building2,
   Percent,
   TrendingUp,
-  Calendar,
-  Settings,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutGrid },
-  { id: 'news', label: 'News', icon: Newspaper },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'predictions', label: 'Predictions', icon: TrendingUp },
   { id: 'projects', label: 'Projects', icon: Building2 },
   { id: 'funding', label: 'Funding', icon: Percent },
-  { id: 'calendar', label: 'Calendar', icon: Calendar },
 ];
 
 export default function Sidebar({ active, onChange }) {
@@ -48,22 +43,6 @@ export default function Sidebar({ active, onChange }) {
       </nav>
 
       <div className="sb-spacer" />
-
-      <button
-        className="sb-item"
-        onClick={() => onChange('settings')}
-        aria-label="Settings"
-        aria-current={active === 'settings'}
-      >
-        {active === 'settings' && (
-          <motion.div
-            layoutId="sb-active-indicator"
-            className="sb-indicator"
-            transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-          />
-        )}
-        <Settings size={18} strokeWidth={2.2} className="sb-icon" />
-      </button>
 
       <a
         className="sb-avatar"

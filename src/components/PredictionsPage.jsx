@@ -4,7 +4,7 @@ import ProjectIcon from './ProjectIcon';
 import { usePerpsTickers } from '../hooks/usePerpsTickers';
 import { formatTokenPrice, formatUSD } from '../lib/format';
 
-const INITIAL_DEFAULTS = { pointsMillions: 1_000, fdvMillions: 100 };
+const FALLBACK_ASSUMPTIONS = { pointsMillions: 1_000, fdvMillions: 100, userAllocationPercent: 10 };
 const LIGHTER_POINTS_PER_WEEK = 65_000;
 const LIGHTER_TOKEN_ALLOCATION = 11_000_000;
 
@@ -18,6 +18,20 @@ function formatFdv(fdvMillions) {
   return fdvMillions >= 1_000
     ? `$${(fdvMillions / 1_000).toFixed(fdvMillions % 1_000 ? 1 : 0)}B`
     : `$${fdvMillions}M`;
+}
+
+function getProjectDefaults(project) {
+  const defaults = project.prediction_defaults;
+  const pointsMillions = Number(defaults?.points_millions);
+  const fdvMillions = Number(defaults?.fdv_millions);
+  const userAllocationPercent = Number(defaults?.user_allocation_percent);
+  return {
+    pointsMillions: Number.isFinite(pointsMillions) && pointsMillions > 0 ? pointsMillions : FALLBACK_ASSUMPTIONS.pointsMillions,
+    fdvMillions: Number.isFinite(fdvMillions) && fdvMillions > 0 ? fdvMillions : FALLBACK_ASSUMPTIONS.fdvMillions,
+    userAllocationPercent: Number.isFinite(userAllocationPercent) && userAllocationPercent > 0 && userAllocationPercent <= 100
+      ? userAllocationPercent
+      : FALLBACK_ASSUMPTIONS.userAllocationPercent,
+  };
 }
 
 function ProjectHeader({ project, index }) {
@@ -36,7 +50,6 @@ function ProjectHeader({ project, index }) {
 }
 
 export default function PredictionsPage() {
-  const [defaults, setDefaults] = useState(INITIAL_DEFAULTS);
   const [assumptions, setAssumptions] = useState({});
   const [lighterWeeks, setLighterWeeks] = useState(12);
   const { data: tickers } = usePerpsTickers();
@@ -45,15 +58,11 @@ export default function PredictionsPage() {
   const lighterForecast = lighterValue == null ? null : lighterValue / (LIGHTER_POINTS_PER_WEEK * lighterWeeks);
   const perps = projects.filter((project) => project.points_snapshot || ['live', 'running'].includes(project.points_status));
 
-  function updateAssumption(name, field, value) {
+  function updateAssumption(project, field, value) {
     setAssumptions((current) => ({
       ...current,
-      [name]: { ...(current[name] || defaults), [field]: Number(value) },
+      [project.name]: { ...(current[project.name] || getProjectDefaults(project)), [field]: Number(value) },
     }));
-  }
-
-  function updateDefaults(field, value) {
-    setDefaults((current) => ({ ...current, [field]: Number(value) }));
   }
 
   return (
@@ -65,24 +74,6 @@ export default function PredictionsPage() {
           <p>Build a price-per-point estimate from your own points and FDV assumptions.</p>
         </div>
         <div className="card-tab">{perps.length} active campaigns</div>
-      </div>
-
-      <div className="card prediction-defaults">
-        <div>
-          <div className="card-title">Default assumptions</div>
-          <p>Set the starting values for every standard campaign card.</p>
-        </div>
-        <div className="prediction-default-controls">
-          <label>
-            <span>Total points <strong>{formatPoints(defaults.pointsMillions)}</strong></span>
-            <input type="range" min="10" max="10000" step="10" value={defaults.pointsMillions} onChange={(event) => updateDefaults('pointsMillions', event.target.value)} aria-label="Default total points" />
-          </label>
-          <label>
-            <span>Project FDV <strong>{formatFdv(defaults.fdvMillions)}</strong></span>
-            <input type="range" min="1" max="10000" step="1" value={defaults.fdvMillions} onChange={(event) => updateDefaults('fdvMillions', event.target.value)} aria-label="Default project fully diluted valuation" />
-          </label>
-          <button type="button" className="prediction-apply-defaults" onClick={() => setAssumptions({})}>Apply to all</button>
-        </div>
       </div>
 
       <div className="predictions-grid">
@@ -114,8 +105,8 @@ export default function PredictionsPage() {
             );
           }
 
-          const values = assumptions[project.name] || defaults;
-          const userForecast = values.fdvMillions / values.pointsMillions;
+          const values = assumptions[project.name] || getProjectDefaults(project);
+          const userForecast = (values.fdvMillions * (values.userAllocationPercent / 100)) / values.pointsMillions;
 
           return (
             <article className="card prediction-card" key={project.name}>
@@ -135,11 +126,15 @@ export default function PredictionsPage() {
               <div className="prediction-controls">
                 <label>
                   <span>Total points <strong>{formatPoints(values.pointsMillions)}</strong></span>
-                  <input type="range" min="10" max="10000" step="10" value={values.pointsMillions} onChange={(event) => updateAssumption(project.name, 'pointsMillions', event.target.value)} aria-label={`${project.name} total points`} />
+                  <input type="range" min="10" max="10000" step="10" value={values.pointsMillions} onChange={(event) => updateAssumption(project, 'pointsMillions', event.target.value)} aria-label={`${project.name} total points`} />
                 </label>
                 <label>
                   <span>Project FDV <strong>{formatFdv(values.fdvMillions)}</strong></span>
-                  <input type="range" min="1" max="10000" step="1" value={values.fdvMillions} onChange={(event) => updateAssumption(project.name, 'fdvMillions', event.target.value)} aria-label={`${project.name} fully diluted valuation`} />
+                  <input type="range" min="1" max="10000" step="1" value={values.fdvMillions} onChange={(event) => updateAssumption(project, 'fdvMillions', event.target.value)} aria-label={`${project.name} fully diluted valuation`} />
+                </label>
+                <label>
+                  <span>Users&apos; FDV allocation <strong>{values.userAllocationPercent}%</strong></span>
+                  <input type="range" min="1" max="100" step="1" value={values.userAllocationPercent} onChange={(event) => updateAssumption(project, 'userAllocationPercent', event.target.value)} aria-label={`${project.name} FDV allocated to users`} />
                 </label>
               </div>
             </article>

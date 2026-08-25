@@ -37,6 +37,11 @@
     "points_snapshot": {
       "weekday": "tuesday",
       "time": "14:00"
+    },
+    "prediction_defaults": {
+      "points_millions": 12,
+      "fdv_millions": 500,
+      "user_allocation_percent": 20
     }
   },
   {
@@ -50,6 +55,11 @@
     "points_snapshot": {
       "weekday": "friday",
       "time": "15:00"
+    },
+    "prediction_defaults": {
+      "points_millions": 9,
+      "fdv_millions": 1500,
+      "user_allocation_percent": 50
     }
   },
   {
@@ -63,6 +73,11 @@
     "points_snapshot": {
       "weekday": "monday",
       "time": "12:00"
+    },
+    "prediction_defaults": {
+      "points_millions": 20,
+      "fdv_millions": 250,
+      "user_allocation_percent": 20
     }
   },
   {
@@ -76,6 +91,11 @@
     "points_snapshot": {
       "weekday": "thursday",
       "time": "00:00"
+    },
+    "prediction_defaults": {
+      "points_millions": 500,
+      "fdv_millions": 300,
+      "user_allocation_percent": 25
     }
   },
   {
@@ -89,6 +109,11 @@
     "points_snapshot": {
       "weekday": "friday",
       "time": "14:00"
+    },
+    "prediction_defaults": {
+      "points_millions": 42,
+      "fdv_millions": 1000,
+      "user_allocation_percent": 8
     }
   },
   {
@@ -102,6 +127,11 @@
     "points_snapshot": {
       "weekday": "monday",
       "time": "10:00"
+    },
+    "prediction_defaults": {
+      "points_millions": 80,
+      "fdv_millions": 250,
+      "user_allocation_percent": 25
     }
   },
   {
@@ -124,6 +154,11 @@
     "points_snapshot": {
       "weekday": "friday",
       "time": "00:00"
+    },
+    "prediction_defaults": {
+      "points_millions": 1987,
+      "fdv_millions": 150,
+      "user_allocation_percent": 25
     }
   },
   {
@@ -137,6 +172,11 @@
     "points_snapshot": {
       "weekday": "friday",
       "time": "16:00"
+    },
+    "prediction_defaults": {
+      "points_millions": 300,
+      "fdv_millions": 300,
+      "user_allocation_percent": 25
     }
   },
   {
@@ -199,6 +239,11 @@
     "points_snapshot": {
       "weekday": "tuesday",
       "time": "00:00"
+    },
+    "prediction_defaults": {
+      "points_millions": 70,
+      "fdv_millions": 400,
+      "user_allocation_percent": 30
     }
   },
   {
@@ -212,6 +257,11 @@
     "points_snapshot": {
       "weekday": "monday",
       "time": "12:00"
+    },
+    "prediction_defaults": {
+      "points_millions": 17,
+      "fdv_millions": 300,
+      "user_allocation_percent": 45
     }
   },
   {
