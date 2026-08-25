@@ -20,6 +20,13 @@ function formatFdv(fdvMillions) {
     : `$${fdvMillions}M`;
 }
 
+function formatAllocation(value) {
+  if (value >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(1)}B`;
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
+  return `$${value.toFixed(1)}`;
+}
+
 function getProjectDefaults(project) {
   const defaults = project.prediction_defaults;
   const pointsMillions = Number(defaults?.points_millions);
@@ -56,7 +63,7 @@ function PersonalAllocation({ projectName, points, allocation, onChange }) {
     <div className="personal-allocation">
       <div>
         <span>Your allocation</span>
-        <strong>{hasAllocation ? formatUSD(allocation) : '—'}</strong>
+        <strong>{hasAllocation ? formatAllocation(allocation) : '—'}</strong>
       </div>
       <label>
         <span>Your points</span>
