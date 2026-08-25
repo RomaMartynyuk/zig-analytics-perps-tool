@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Analytics } from '@vercel/analytics/react';
 
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -264,6 +265,7 @@ export default function App() {
 
         <Footer />
       </main>
+      <Analytics />
     </div>
   );
 }
