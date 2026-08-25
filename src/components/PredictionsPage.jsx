@@ -49,8 +49,35 @@ function ProjectHeader({ project, index }) {
   );
 }
 
+function PersonalAllocation({ projectName, points, allocation, onChange }) {
+  const hasAllocation = Number.isFinite(allocation) && allocation > 0;
+
+  return (
+    <div className="personal-allocation">
+      <div>
+        <span>Your allocation</span>
+        <strong>{hasAllocation ? formatUSD(allocation) : '—'}</strong>
+      </div>
+      <label>
+        <span>Your points</span>
+        <input
+          type="number"
+          min="0"
+          step="any"
+          inputMode="decimal"
+          value={points}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder="0"
+          aria-label={`${projectName} your points`}
+        />
+      </label>
+    </div>
+  );
+}
+
 export default function PredictionsPage() {
   const [assumptions, setAssumptions] = useState({});
+  const [ownedPoints, setOwnedPoints] = useState({});
   const [lighterWeeks, setLighterWeeks] = useState(12);
   const { data: tickers } = usePerpsTickers();
   const litPrice = tickers.find((ticker) => ticker.ticker === 'LIT')?.price;
@@ -63,6 +90,10 @@ export default function PredictionsPage() {
       ...current,
       [project.name]: { ...(current[project.name] || getProjectDefaults(project)), [field]: Number(value) },
     }));
+  }
+
+  function updateOwnedPoints(projectName, value) {
+    setOwnedPoints((current) => ({ ...current, [projectName]: value }));
   }
 
   return (
@@ -79,6 +110,9 @@ export default function PredictionsPage() {
       <div className="predictions-grid">
         {perps.map((project, index) => {
           if (project.name === 'Lighter') {
+            const personalPoints = ownedPoints[project.name] ?? '';
+            const personalAllocation = lighterForecast == null ? null : Number(personalPoints) * lighterForecast;
+
             return (
               <article className="card prediction-card lighter-prediction-card" key={project.name}>
                 <ProjectHeader project={project} index={index} />
@@ -100,6 +134,12 @@ export default function PredictionsPage() {
                     <span>Campaign duration <strong>{lighterWeeks} weeks</strong></span>
                     <input type="range" min="4" max="60" step="1" value={lighterWeeks} onChange={(event) => setLighterWeeks(Number(event.target.value))} aria-label="Robinhood campaign duration in weeks" />
                   </label>
+                  <PersonalAllocation
+                    projectName={project.name}
+                    points={personalPoints}
+                    allocation={personalAllocation}
+                    onChange={(value) => updateOwnedPoints(project.name, value)}
+                  />
                 </div>
                 <span className="prediction-credit">ZigAnalytics by @herzig_crypto</span>
               </article>
@@ -108,6 +148,8 @@ export default function PredictionsPage() {
 
           const values = assumptions[project.name] || getProjectDefaults(project);
           const userForecast = (values.fdvMillions * (values.userAllocationPercent / 100)) / values.pointsMillions;
+          const personalPoints = ownedPoints[project.name] ?? '';
+          const personalAllocation = Number(personalPoints) * userForecast;
 
           return (
             <article className="card prediction-card" key={project.name}>
@@ -124,6 +166,12 @@ export default function PredictionsPage() {
                   <small>per point</small>
                 </div>
               </div>
+              <PersonalAllocation
+                projectName={project.name}
+                points={personalPoints}
+                allocation={personalAllocation}
+                onChange={(value) => updateOwnedPoints(project.name, value)}
+              />
               <div className="prediction-controls">
                 <label>
                   <span>Total points <strong>{formatPoints(values.pointsMillions)}</strong></span>

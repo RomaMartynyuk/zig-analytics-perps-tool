@@ -679,6 +679,51 @@
   margin-top: auto;
   padding-top: 16px;
 }
+.personal-allocation {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 11px;
+  padding: 10px 11px;
+  border: 1px solid rgba(63, 181, 107, .2);
+  border-radius: var(--radius-sm);
+  background: rgba(63, 181, 107, .08);
+}
+.personal-allocation > div > span,
+.personal-allocation label > span {
+  display: block;
+  color: var(--ink-faint);
+  font-size: 9px;
+  font-weight: 600;
+}
+.personal-allocation strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--up);
+  font-size: 16px;
+  line-height: 1;
+}
+.personal-allocation label {
+  min-width: 78px;
+}
+.personal-allocation input {
+  width: 100%;
+  margin-top: 4px;
+  padding: 4px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+}
+.personal-allocation input:focus {
+  border-color: var(--accent-3);
+}
 .prediction-credit {
   position: absolute;
   right: 20px;
@@ -945,9 +990,11 @@
   }
   .sidebar {
     width: 100%;
+    height: auto;
     flex-direction: row;
     border-radius: var(--radius-xl);
     position: static;
+    transform: none;
     justify-content: space-between;
     padding: 10px 14px;
   }
