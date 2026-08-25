@@ -1,6 +1,6 @@
-// Vercel Serverless Function — combines two public bulk feeds. Lighter's
+// Vercel Serverless Function — combines public funding feeds. Lighter's
 // funding-rates feed already supplies 8h-equivalent rates for Lighter and
-// reference venues; Aster's rate is normalized with its per-market interval.
+// reference venues.
 
 const LIGHTER_VENUES = {
   lighter: 'Lighter',
@@ -65,10 +65,8 @@ async function fetchEdgeXRates() {
 
 export default async function handler(req, res) {
   try {
-    const [lighterResult, asterPremiumResult, asterInfoResult, pacificaResult, edgeXResult] = await Promise.allSettled([
+    const [lighterResult, pacificaResult, edgeXResult] = await Promise.allSettled([
       fetchJson('https://mainnet.zklighter.elliot.ai/api/v1/funding-rates'),
-      fetchJson('https://fapi.asterdex.com/fapi/v1/premiumIndex'),
-      fetchJson('https://fapi.asterdex.com/fapi/v1/fundingInfo'),
       fetchJson('https://api.pacifica.fi/api/v1/info'),
       fetchEdgeXRates(),
     ]);
@@ -84,32 +82,12 @@ export default async function handler(req, res) {
     };
 
     const hasLighterFeed = lighterResult.status === 'fulfilled';
-    const hasAsterFeed = asterPremiumResult.status === 'fulfilled' && asterInfoResult.status === 'fulfilled';
-
     if (hasLighterFeed) {
       for (const row of lighterResult.value?.funding_rates || []) {
         const venue = LIGHTER_VENUES[row.exchange];
         const rate8h = Number(row.rate);
         if (venue && Number.isFinite(rate8h)) {
           addRate(normalizeSymbol(row.symbol), { venue, rate8h, intervalHours: 8 });
-        }
-      }
-    }
-
-    if (hasAsterFeed) {
-      const intervalBySymbol = new Map(
-        (asterInfoResult.value || []).map((row) => [row.symbol, Number(row.fundingIntervalHours)])
-      );
-      for (const row of asterPremiumResult.value || []) {
-        const intervalHours = intervalBySymbol.get(row.symbol);
-        const fundingRate = Number(row.lastFundingRate);
-        if (Number.isFinite(fundingRate) && Number.isFinite(intervalHours) && intervalHours > 0) {
-          addRate(normalizeSymbol(row.symbol), {
-            venue: 'Aster',
-            rate8h: fundingRate * (8 / intervalHours),
-            intervalHours,
-            nextFundingTime: Number(row.nextFundingTime) || null,
-          });
         }
       }
     }
@@ -141,7 +119,7 @@ export default async function handler(req, res) {
       return spread8h > 0 ? [{ symbol, rates, low, high, spread8h }] : [];
     }).sort((a, b) => b.spread8h - a.spread8h);
 
-    const hasAnyFeed = hasLighterFeed || hasAsterFeed || pacificaResult.status === 'fulfilled' || edgeXResult.status === 'fulfilled';
+    const hasAnyFeed = hasLighterFeed || pacificaResult.status === 'fulfilled' || edgeXResult.status === 'fulfilled';
     if (!hasAnyFeed) {
       return res.status(502).json({ error: 'Funding data request failed' });
     }

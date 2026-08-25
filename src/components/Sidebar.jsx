@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion';
 import {
-  LayoutGrid,
   BarChart3,
   Building2,
   Percent,
@@ -8,11 +7,10 @@ import {
 } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutGrid },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-  { id: 'predictions', label: 'Predictions', icon: TrendingUp },
-  { id: 'projects', label: 'Projects', icon: Building2 },
+  { id: 'predictions', label: 'Points', icon: TrendingUp },
   { id: 'funding', label: 'Funding', icon: Percent },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+  { id: 'projects', label: 'TVL', icon: Building2 },
 ];
 
 export default function Sidebar({ active, onChange }) {
@@ -41,8 +39,6 @@ export default function Sidebar({ active, onChange }) {
           );
         })}
       </nav>
-
-      <div className="sb-spacer" />
 
       <a
         className="sb-avatar"

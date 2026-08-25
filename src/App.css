@@ -605,7 +605,9 @@
   gap: 18px;
 }
 .prediction-card {
+  position: relative;
   min-height: 292px;
+  padding-bottom: 39px;
   display: flex;
   flex-direction: column;
 }
@@ -676,6 +678,16 @@
   gap: 11px;
   margin-top: auto;
   padding-top: 16px;
+}
+.prediction-credit {
+  position: absolute;
+  right: 20px;
+  bottom: 13px;
+  color: var(--ink-faint);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: .025em;
+  opacity: .72;
 }
 .lighter-prediction-card { min-height: 312px; }
 .robinhood-campaign {

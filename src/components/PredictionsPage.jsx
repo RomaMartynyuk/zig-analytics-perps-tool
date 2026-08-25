@@ -101,6 +101,7 @@ export default function PredictionsPage() {
                     <input type="range" min="4" max="60" step="1" value={lighterWeeks} onChange={(event) => setLighterWeeks(Number(event.target.value))} aria-label="Robinhood campaign duration in weeks" />
                   </label>
                 </div>
+                <span className="prediction-credit">ZigAnalytics by @herzig_crypto</span>
               </article>
             );
           }
@@ -137,6 +138,7 @@ export default function PredictionsPage() {
                   <input type="range" min="1" max="100" step="1" value={values.userAllocationPercent} onChange={(event) => updateAssumption(project, 'userAllocationPercent', event.target.value)} aria-label={`${project.name} FDV allocated to users`} />
                 </label>
               </div>
+              <span className="prediction-credit">ZigAnalytics by @herzig_crypto</span>
             </article>
           );
         })}
