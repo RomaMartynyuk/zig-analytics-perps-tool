@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { formatUSD } from '../lib/format';
 import { getProtocolColor } from '../lib/marketShare';
+import { getLogoUrl } from '../lib/projectLogos';
 import { useVolumeOiAnalysisData } from '../hooks/useVolumeOiAnalysisData';
 import AnalyticsCredit from './AnalyticsCredit';
 
@@ -76,11 +77,17 @@ function ScatterChart({ protocols, scale, selectedSlug, onSelect, snapshotDate }
           {lowerReference < upperReference && <line x1={x(lowerReference)} y1={y(lowerReference)} x2={x(upperReference)} y2={y(upperReference)} className="volume-oi-reference" />}
           {points.map((point) => {
             const selectedPoint = point.slug === selectedSlug;
+            const markerRadius = selectedPoint ? 10 : 8;
+            const logoUrl = getLogoUrl(point.name);
+            const clipId = `volume-oi-logo-${point.slug.replace(/[^a-z0-9_-]/gi, '')}`;
             return (
               <g key={point.slug} className="volume-oi-point" onMouseEnter={() => onSelect(point.slug)} onFocus={() => onSelect(point.slug)} onClick={() => onSelect(point.slug)} onKeyDown={(event) => event.key === 'Enter' && onSelect(point.slug)} tabIndex="0" role="button" aria-label={`Select ${point.name}`}>
-                <circle cx={x(point.openInterest)} cy={y(point.volume24h)} r={selectedPoint ? 6.5 : 5} fill={getProtocolColor(point.slug)} className={selectedPoint ? 'is-selected' : ''} />
+                <defs><clipPath id={clipId}><circle cx={x(point.openInterest)} cy={y(point.volume24h)} r={markerRadius - 1.5} /></clipPath></defs>
+                <circle cx={x(point.openInterest)} cy={y(point.volume24h)} r={markerRadius} fill={getProtocolColor(point.slug)} className="volume-oi-logo-shell" />
+                {logoUrl && <image href={logoUrl} x={x(point.openInterest) - markerRadius + 1.5} y={y(point.volume24h) - markerRadius + 1.5} width={(markerRadius - 1.5) * 2} height={(markerRadius - 1.5) * 2} clipPath={`url(#${clipId})`} preserveAspectRatio="xMidYMid slice" />}
+                <circle cx={x(point.openInterest)} cy={y(point.volume24h)} r={markerRadius} fill="none" className={`volume-oi-logo-ring ${selectedPoint ? 'is-selected' : ''}`} />
                 <title>{`${point.name}\n24h Volume: ${formatUSD(point.volume24h)}\nOpen Interest: ${formatUSD(point.openInterest)}\nVolume / OI: ${formatRatio(point.volumeOiRatio)}\nVolume Share: ${formatShare(point.volumeShare)}\nOI Share: ${formatShare(point.openInterestShare)}\nSnapshot: ${formatDate(snapshotDate)}\nSource: ${point.dataSource || '—'}`}</title>
-                {highlighted.has(point.slug) && <text x={x(point.openInterest) + 7} y={y(point.volume24h) - 7} className="volume-oi-label">{point.name}</text>}
+                {highlighted.has(point.slug) && <text x={x(point.openInterest) + markerRadius + 3} y={y(point.volume24h) - markerRadius + 1} className="volume-oi-label">{point.name}</text>}
               </g>
             );
           })}

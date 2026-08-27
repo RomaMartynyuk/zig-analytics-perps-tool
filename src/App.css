@@ -1070,10 +1070,11 @@
 .volume-oi-label { fill: var(--ink-soft); }
 .volume-oi-reference { stroke: var(--ink-faint); stroke-dasharray: 4 4; stroke-width: 1; }
 .volume-oi-point { cursor: pointer; outline: none; }
-.volume-oi-point circle { stroke: var(--card); stroke-width: 2; transition: r .15s ease, stroke .15s ease; }
-.volume-oi-point:hover circle,
-.volume-oi-point:focus circle,
-.volume-oi-point circle.is-selected { r: 7px; stroke: var(--sidebar); }
+.volume-oi-logo-shell { stroke: var(--card); stroke-width: 2; }
+.volume-oi-logo-ring { stroke: rgba(254, 252, 248, .92); stroke-width: 1.5; transition: stroke .15s ease, stroke-width .15s ease; }
+.volume-oi-point:hover .volume-oi-logo-ring,
+.volume-oi-point:focus .volume-oi-logo-ring,
+.volume-oi-logo-ring.is-selected { stroke: var(--sidebar); stroke-width: 2.5; }
 .volume-oi-selected {
   display: grid;
   gap: 1px;
@@ -1128,6 +1129,10 @@
 }
 .volume-oi-share-chart { margin-top: 1px; }
 .volume-oi-share-chart svg { display: block; width: 100%; height: 190px; overflow: visible; }
+.volume-oi-share-chart .volume-oi-point circle { stroke: var(--card); stroke-width: 2; transition: r .15s ease, stroke .15s ease; }
+.volume-oi-share-chart .volume-oi-point:hover circle,
+.volume-oi-share-chart .volume-oi-point:focus circle,
+.volume-oi-share-chart .volume-oi-point circle.is-selected { r: 7px; stroke: var(--sidebar); }
 .volume-oi-share-selected { margin-top: -1px; }
 .volume-oi-gap-rankings {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
