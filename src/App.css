@@ -1129,10 +1129,6 @@
 }
 .volume-oi-share-chart { margin-top: 1px; }
 .volume-oi-share-chart svg { display: block; width: 100%; height: 190px; overflow: visible; }
-.volume-oi-share-chart .volume-oi-point circle { stroke: var(--card); stroke-width: 2; transition: r .15s ease, stroke .15s ease; }
-.volume-oi-share-chart .volume-oi-point:hover circle,
-.volume-oi-share-chart .volume-oi-point:focus circle,
-.volume-oi-share-chart .volume-oi-point circle.is-selected { r: 7px; stroke: var(--sidebar); }
 .volume-oi-share-selected { margin-top: -1px; }
 .volume-oi-gap-rankings {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
