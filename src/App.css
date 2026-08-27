@@ -1111,6 +1111,37 @@
 .volume-oi-gap-list.positive strong { color: var(--up); }
 .volume-oi-gap-list.negative strong { color: var(--down); }
 .volume-oi-share-empty { min-height: 210px; }
+.growth-matrix {
+  grid-column: span 2;
+  grid-row: span 3;
+  min-height: 384px;
+  padding: 18px 20px;
+  overflow: hidden;
+}
+.growth-matrix-meta {
+  margin: 11px 0 7px;
+  color: var(--ink-faint);
+  font-size: 9px;
+  font-weight: 600;
+}
+.growth-matrix-scroll { overflow: auto; max-height: 286px; }
+.growth-matrix table { width: 100%; min-width: 525px; border-collapse: collapse; }
+.growth-matrix th,
+.growth-matrix td { border-bottom: 1px solid var(--line); padding: 7px 8px; font-size: 9px; text-align: right; white-space: nowrap; }
+.growth-matrix thead th { position: sticky; top: 0; z-index: 2; background: var(--card); color: var(--ink-soft); font-size: 8.5px; letter-spacing: .06em; text-transform: uppercase; }
+.growth-matrix thead button { border: 0; padding: 0; background: transparent; color: inherit; cursor: pointer; font: inherit; font-weight: 700; text-transform: inherit; }
+.growth-matrix thead small { display: block; margin-top: 2px; color: var(--ink-faint); font-size: 7.5px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.growth-matrix tbody td { color: var(--ink); font-weight: 700; }
+.growth-matrix-dex { position: sticky; left: 0; z-index: 1; min-width: 92px; background: var(--card); color: var(--ink); font-size: 9.5px !important; font-weight: 700; text-align: left !important; }
+.growth-matrix thead .growth-matrix-dex { z-index: 3; }
+.growth-matrix-momentum { color: var(--ink-faint) !important; font-size: 8.5px !important; font-weight: 700; }
+.growth-matrix-momentum.broad_growth { color: var(--up) !important; }
+.growth-matrix-momentum.broad_contraction { color: var(--down) !important; }
+.growth-matrix-note { margin-top: 8px; color: var(--ink-faint); font-size: 8.5px; line-height: 1.35; }
+.growth-matrix-empty { min-height: 275px; }
+.growth-matrix-loading { margin-top: 24px; }
+.growth-matrix-progress { position: relative; display: block; width: 128px; height: 8px; overflow: hidden; border-radius: 999px; background: var(--card-tint); }
+.growth-matrix-progress i { display: block; height: 100%; border-radius: inherit; background: var(--accent-2); }
 .market-movers-meta {
   margin: 10px 0 7px;
   color: var(--ink-faint);
@@ -1446,6 +1477,12 @@
     grid-column: 1 / -1;
     grid-row: span 3;
     min-height: 340px;
+    padding: 16px;
+  }
+  .growth-matrix {
+    grid-column: 1 / -1;
+    grid-row: span 4;
+    min-height: 430px;
     padding: 16px;
   }
   .market-share-head { flex-direction: column; }

@@ -17,7 +17,7 @@ function previousUtcDay(day) {
   return date.toISOString().slice(0, 10);
 }
 
-function continuousRecentDates(rows, requiredDays) {
+export function continuousRecentDates(rows, requiredDays) {
   const dates = [...new Set(rows.map((row) => dateKey(row.snapshot_date)))].sort();
   const selected = [];
   let current = dates.at(-1);
@@ -326,4 +326,95 @@ export function buildGrowthMetrics(rows, { period, metric }) {
       : 'Latest point-in-time value versus the value N daily observations earlier.',
     values,
   };
+}
+
+function metricGrowth(startRow, endRow, field) {
+  const start = toValidNumber(startRow?.[field]);
+  const current = toValidNumber(endRow?.[field]);
+  if (start == null || current == null || start <= 0) return null;
+  return {
+    start,
+    current,
+    growthPct: ((current / start) - 1) * 100,
+    startDataSource: startRow.data_source || null,
+    currentDataSource: endRow.data_source || null,
+  };
+}
+
+function findSnapshot(rows, date) {
+  return rows.find((row) => dateKey(row.snapshot_date) === date) || null;
+}
+
+/**
+ * Builds a same-window, per-metric comparison. Platform sufficiency follows
+ * the Volume window used by market-share movers, while each cell remains
+ * independently nullable when a protocol lacks either endpoint.
+ */
+export function buildGrowthMatrix(rows, { period, totalProtocols }) {
+  const requiredDays = PERIOD_DAYS[period];
+  if (!requiredDays) throw new Error('Unsupported period');
+  const volumeDates = rows.filter((row) => toValidNumber(row.volume_24h) != null);
+  const dates = continuousRecentDates(volumeDates, requiredDays);
+  const sufficientHistory = dates.length === requiredDays;
+  const endDate = dates.at(-1) || null;
+  const startDate = sufficientHistory ? dates[0] : null;
+  const protocolRows = new Map();
+  for (const row of rows) {
+    if (!row?.slug) continue;
+    const existing = protocolRows.get(row.slug) || { id: row.id, slug: row.slug, name: row.name, rows: [] };
+    if (row.snapshot_date) existing.rows.push(row);
+    protocolRows.set(row.slug, existing);
+  }
+
+  if (!sufficientHistory) {
+    return {
+      period,
+      requiredDays,
+      availableDays: dates.length,
+      sufficientHistory: false,
+      startDate: null,
+      endDate,
+      coverage: { total: totalProtocols, volumeComparable: 0, openInterestComparable: 0, tvlComparable: 0, shareComparable: 0 },
+      protocols: [],
+    };
+  }
+
+  const startSnapshots = rows.filter((row) => dateKey(row.snapshot_date) === startDate);
+  const endSnapshots = rows.filter((row) => dateKey(row.snapshot_date) === endDate);
+  const startVolume = startSnapshots.map((row) => toValidNumber(row.volume_24h)).filter((value) => value != null);
+  const endVolume = endSnapshots.map((row) => toValidNumber(row.volume_24h)).filter((value) => value != null);
+  const startVolumeTotal = startVolume.reduce((sum, value) => sum + value, 0);
+  const endVolumeTotal = endVolume.reduce((sum, value) => sum + value, 0);
+
+  const protocols = [...protocolRows.values()].map((protocol) => {
+    const start = findSnapshot(protocol.rows, startDate);
+    const end = findSnapshot(protocol.rows, endDate);
+    const volume = metricGrowth(start, end, 'volume_24h');
+    const openInterest = metricGrowth(start, end, 'open_interest');
+    const tvl = metricGrowth(start, end, 'tvl');
+    const startVolumeValue = toValidNumber(start?.volume_24h);
+    const endVolumeValue = toValidNumber(end?.volume_24h);
+    const volumeShare = startVolumeValue != null && endVolumeValue != null && startVolumeTotal > 0 && endVolumeTotal > 0
+      ? {
+        start: (startVolumeValue / startVolumeTotal) * 100,
+        current: (endVolumeValue / endVolumeTotal) * 100,
+        changePp: (endVolumeValue / endVolumeTotal) * 100 - (startVolumeValue / startVolumeTotal) * 100,
+        startDataSource: start?.data_source || null,
+        currentDataSource: end?.data_source || null,
+      }
+      : null;
+    const changes = [volume?.growthPct, openInterest?.growthPct, tvl?.growthPct, volumeShare?.changePp].filter(Number.isFinite);
+    const positives = changes.filter((value) => value > 0).length;
+    const negatives = changes.filter((value) => value < 0).length;
+    const momentum = changes.length < 3 ? null : positives >= 3 ? 'broad_growth' : negatives >= 3 ? 'broad_contraction' : 'mixed';
+    return { id: protocol.id, slug: protocol.slug, name: protocol.name, volume, openInterest, tvl, volumeShare, momentum };
+  });
+  const coverage = {
+    total: totalProtocols,
+    volumeComparable: protocols.filter((protocol) => protocol.volume).length,
+    openInterestComparable: protocols.filter((protocol) => protocol.openInterest).length,
+    tvlComparable: protocols.filter((protocol) => protocol.tvl).length,
+    shareComparable: protocols.filter((protocol) => protocol.volumeShare).length,
+  };
+  return { period, requiredDays, availableDays: dates.length, sufficientHistory: true, startDate, endDate, coverage, protocols };
 }

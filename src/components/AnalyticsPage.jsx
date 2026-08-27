@@ -2,6 +2,7 @@ import MarketShareMap from './MarketShareMap';
 import MarketShareMovers from './MarketShareMovers';
 import VolumeOiAnalysis from './VolumeOiAnalysis';
 import VolumeOiShareAnalysis from './VolumeOiShareAnalysis';
+import GrowthMatrix from './GrowthMatrix';
 
 export default function AnalyticsPage() {
   return (
@@ -19,7 +20,7 @@ export default function AnalyticsPage() {
         <VolumeOiAnalysis />
         <VolumeOiShareAnalysis />
         <MarketShareMovers />
-        <div className="card analytics-skeleton analytics-skeleton-small" aria-hidden="true" />
+        <GrowthMatrix />
       </div>
     </section>
   );

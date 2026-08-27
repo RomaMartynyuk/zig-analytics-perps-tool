@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   buildCurrentMarketShare,
+  buildGrowthMatrix,
   buildMarketShareHistory,
   buildMarketShareMovers,
   buildVolumeOiAnalysis,
@@ -10,6 +11,7 @@ import {
 import { collectDailyProtocolSnapshots, utcSnapshotDate, validMetric } from '../server/snapshotCollector.js';
 import { upsertDailySnapshot } from '../server/snapshotRepository.js';
 import { selectTopMarketShareSeries } from '../src/lib/marketShare.js';
+import { sortGrowthRows } from '../src/lib/growthMatrix.js';
 
 function rowsForDays(days, firstValue = 25, lastValue = firstValue) {
   return Array.from({ length: days }, (_, index) => {
@@ -252,6 +254,81 @@ test('share-gap scatter does not renormalize its paired subset and ranks both di
   assert.equal(analysis.protocols.reduce((sum, protocol) => sum + protocol.openInterestShare, 0), 70);
   assert.equal(analysis.largestPositiveGaps[0].slug, 'volume-heavy');
   assert.equal(analysis.largestNegativeGaps[0].slug, 'oi-heavy');
+});
+
+test('Growth Matrix calculates metric-specific growth and Volume-share changes from separate start/end denominators', () => {
+  const rows = Array.from({ length: 7 }, (_, index) => {
+    const date = `2026-02-${String(index + 1).padStart(2, '0')}`;
+    const final = index === 6;
+    return [
+      { id: 1, slug: 'alpha', name: 'Alpha', snapshot_date: date, volume_24h: final ? 200 : 100, open_interest: final ? 200 : 100, tvl: final ? 75 : 50, data_source: 'alpha_api' },
+      { id: 2, slug: 'beta', name: 'Beta', snapshot_date: date, volume_24h: 100, open_interest: 100, tvl: 100, data_source: 'beta_api' },
+      { id: 3, slug: 'volume-only', name: 'Volume Only', snapshot_date: date, volume_24h: 100, open_interest: null, tvl: null, data_source: 'volume_api' },
+    ];
+  }).flat();
+  const matrix = buildGrowthMatrix(rows, { period: '7d', totalProtocols: 3 });
+  const alpha = matrix.protocols.find((protocol) => protocol.slug === 'alpha');
+  const volumeOnly = matrix.protocols.find((protocol) => protocol.slug === 'volume-only');
+  assert.equal(matrix.sufficientHistory, true);
+  assert.equal(matrix.startDate, '2026-02-01');
+  assert.equal(matrix.endDate, '2026-02-07');
+  assert.equal(alpha.volume.growthPct, 100);
+  assert.equal(alpha.openInterest.growthPct, 100);
+  assert.equal(alpha.tvl.growthPct, 50);
+  assert.equal(alpha.volumeShare.start, 100 / 300 * 100);
+  assert.equal(alpha.volumeShare.current, 200 / 400 * 100);
+  assert.equal(alpha.volumeShare.changePp, 200 / 400 * 100 - 100 / 300 * 100);
+  assert.equal(volumeOnly.openInterest, null);
+  assert.equal(volumeOnly.tvl, null);
+  assert.equal(matrix.coverage.volumeComparable, 3);
+  assert.equal(matrix.coverage.openInterestComparable, 2);
+  assert.equal(matrix.coverage.tvlComparable, 2);
+  assert.equal(matrix.coverage.shareComparable, 3);
+});
+
+test('Growth Matrix keeps platform history available when a new protocol lacks the selected window', () => {
+  const rows = Array.from({ length: 30 }, (_, index) => {
+    const date = `2026-03-${String(index + 1).padStart(2, '0')}`;
+    const base = [
+      { id: 1, slug: 'alpha', name: 'Alpha', snapshot_date: date, volume_24h: 100 + index, open_interest: 200 + index, tvl: 50 + index },
+      { id: 2, slug: 'beta', name: 'Beta', snapshot_date: date, volume_24h: 200, open_interest: 300, tvl: 100 },
+    ];
+    if (index >= 25) base.push({ id: 3, slug: 'new-dex', name: 'New DEX', snapshot_date: date, volume_24h: 40, open_interest: 20, tvl: 10 });
+    return base;
+  }).flat();
+  const matrix = buildGrowthMatrix(rows, { period: '30d', totalProtocols: 3 });
+  const alpha = matrix.protocols.find((protocol) => protocol.slug === 'alpha');
+  const newDex = matrix.protocols.find((protocol) => protocol.slug === 'new-dex');
+  assert.equal(matrix.sufficientHistory, true);
+  assert.ok(alpha.volume);
+  assert.equal(newDex.volume, null);
+  assert.equal(newDex.openInterest, null);
+  assert.equal(newDex.tvl, null);
+  assert.equal(newDex.volumeShare, null);
+});
+
+test('Growth Matrix rejects zero or missing bases and reports insufficient 7D/30D/90D platform history', () => {
+  const rows = Array.from({ length: 6 }, (_, index) => ({
+    id: 1, slug: 'alpha', name: 'Alpha', snapshot_date: `2026-04-${String(index + 1).padStart(2, '0')}`,
+    volume_24h: index === 0 ? 0 : 100, open_interest: null, tvl: null,
+  }));
+  assert.equal(buildGrowthMatrix(rows, { period: '7d', totalProtocols: 1 }).sufficientHistory, false);
+  assert.equal(buildGrowthMatrix(rows, { period: '30d', totalProtocols: 1 }).sufficientHistory, false);
+  assert.equal(buildGrowthMatrix(rows, { period: '90d', totalProtocols: 1 }).sufficientHistory, false);
+  const fullRows = [...rows, { ...rows.at(-1), snapshot_date: '2026-04-07' }];
+  const full = buildGrowthMatrix(fullRows, { period: '7d', totalProtocols: 1 });
+  assert.equal(full.protocols[0].volume, null);
+});
+
+test('Growth Matrix sorting orders selected metrics and always keeps missing values last', () => {
+  const rows = [
+    { slug: 'low', name: 'Low', volume: { growthPct: -5 }, volumeShare: { changePp: -1 } },
+    { slug: 'missing', name: 'Missing', volume: null, volumeShare: null },
+    { slug: 'high', name: 'High', volume: { growthPct: 10 }, volumeShare: { changePp: 3 } },
+  ];
+  assert.deepEqual(sortGrowthRows(rows, 'volume').map((row) => row.slug), ['high', 'low', 'missing']);
+  assert.deepEqual(sortGrowthRows(rows, 'volume', false).map((row) => row.slug), ['low', 'high', 'missing']);
+  assert.deepEqual(sortGrowthRows(rows, 'volumeShare').map((row) => row.slug), ['high', 'low', 'missing']);
 });
 
 test('UTC snapshot identity is independent from a local timezone', () => {

@@ -4,6 +4,7 @@ import {
   buildCurrentMarketShare,
   buildVolumeOiAnalysis,
   buildGrowthMetrics,
+  buildGrowthMatrix,
   buildMarketConcentrationHistory,
   buildMarketShareHistory,
   buildMarketShareMovers,
@@ -86,6 +87,20 @@ export async function getGrowthMetrics({ metric, period } = {}, sql = getSql()) 
   if (!PERIOD_DAYS[period]) throw new Error('Unsupported period');
   const rows = await getMetricRows(sql, metric);
   return { metric, ...buildGrowthMetrics(rows, { metric, period }) };
+}
+
+export async function getGrowthMatrix({ period } = {}, sql = getSql()) {
+  const [rows, totalProtocols] = await Promise.all([
+    sql.query(`
+      SELECT p.id, p.slug, p.name, s.snapshot_date, s.volume_24h, s.open_interest, s.tvl, s.data_source
+      FROM protocols p
+      LEFT JOIN protocol_daily_snapshots s ON s.protocol_id = p.id
+      WHERE p.is_active = TRUE
+      ORDER BY s.snapshot_date ASC NULLS FIRST, p.slug ASC
+    `),
+    getActiveProtocolCount(sql),
+  ]);
+  return buildGrowthMatrix(rows, { period, totalProtocols });
 }
 
 export async function getVolumeOiAnalysis(sql = getSql()) {

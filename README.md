@@ -292,6 +292,12 @@ The same response powers the current **Volume Share vs OI Share** module:
 negative gap rankings. Shares are deliberately not renormalized to the scatter
 subset: protocols reporting only one metric still participate in that metric's
 full valid denominator.
+`/api/analytics/growth?matrix=1&period=7d` powers Growth Matrix. It compares
+the same consecutive canonical UTC window as market-share movers. Volume, OI
+and TVL cells are point-to-point percentage growth; Volume Share is a
+percentage-point change with independently calculated start/end denominators.
+Platform history unlocks the matrix, while each protocol/metric keeps its own
+availability, so a newly added DEX cannot block older protocols.
 For rolling 24h volume, growth compares the average of the latest N daily
 observations with the previous N observations; it is not labelled as a period
 sum. `volume-oi` calculates denominators using only protocols with a valid

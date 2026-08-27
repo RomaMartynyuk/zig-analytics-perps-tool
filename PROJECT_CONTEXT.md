@@ -211,6 +211,13 @@ Vercel Cron.
   OI share` та `OI share > Volume share`. Цей модуль використовує той самий
   `/api/analytics/volume-oi`, без нового endpoint, і не renormalize-ить
   visible точки — односторонні дані все одно залишаються в їх denominator.
+  П'ятий модуль — **Growth Matrix**: heatmap-таблиця Volume, OI, TVL та
+  Volume Share для того ж consecutive UTC start/end window, що й Movers.
+  Перші три колонки — percentage growth, Share — percentage-point change.
+  Platform-level sufficiency не залежить від історії кожного окремого DEX:
+  новий DEX з короткою історією має `—` в своїх клітинках, але не вимикає
+  матрицю для решти. Sorting клітинок доступний через заголовки, а heatmap
+  intensity нормалізується per-column по 90th percentile absolute magnitude.
 - **News-картка — порожній стан**, RSS/новини не підключені (Фаза 3
   оригінального плану).
 - **News/Calendar/Community/Settings** навмисно приховані з sidebar, доки
