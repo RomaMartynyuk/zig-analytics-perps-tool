@@ -76,7 +76,7 @@ function ScatterChart({ protocols, scale, selectedSlug, onSelect, snapshotDate }
           {points.map((point) => {
             const selectedPoint = point.slug === selectedSlug;
             return (
-              <g key={point.slug} className="volume-oi-point" onClick={() => onSelect(point.slug)} onKeyDown={(event) => event.key === 'Enter' && onSelect(point.slug)} tabIndex="0" role="button" aria-label={`Select ${point.name}`}>
+              <g key={point.slug} className="volume-oi-point" onMouseEnter={() => onSelect(point.slug)} onFocus={() => onSelect(point.slug)} onClick={() => onSelect(point.slug)} onKeyDown={(event) => event.key === 'Enter' && onSelect(point.slug)} tabIndex="0" role="button" aria-label={`Select ${point.name}`}>
                 <circle cx={x(point.openInterest)} cy={y(point.volume24h)} r={selectedPoint ? 6.5 : 5} fill={getProtocolColor(point.slug)} className={selectedPoint ? 'is-selected' : ''} />
                 <title>{`${point.name}\n24h Volume: ${formatUSD(point.volume24h)}\nOpen Interest: ${formatUSD(point.openInterest)}\nVolume / OI: ${formatRatio(point.volumeOiRatio)}\nVolume Share: ${formatShare(point.volumeShare)}\nOI Share: ${formatShare(point.openInterestShare)}\nSnapshot: ${formatDate(snapshotDate)}\nSource: ${point.dataSource || '—'}`}</title>
                 {highlighted.has(point.slug) && <text x={x(point.openInterest) + 7} y={y(point.volume24h) - 7} className="volume-oi-label">{point.name}</text>}

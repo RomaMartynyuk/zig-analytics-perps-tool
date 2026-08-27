@@ -775,7 +775,8 @@
   margin-top: 13px;
 }
 .analytics-page {
-  max-width: 1120px;
+  width: 100%;
+  max-width: none;
 }
 .analytics-heading {
   margin: 4px 0 22px;
@@ -804,9 +805,15 @@
 }
 .analytics-skeleton-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-auto-rows: 122px;
+  grid-template-columns: minmax(0, 1.05fr) minmax(420px, .95fr);
+  grid-template-areas:
+    "market-map volume-oi"
+    "share-compare volume-oi"
+    "movers movers"
+    "growth growth";
+  grid-template-rows: minmax(340px, auto) minmax(310px, auto) minmax(190px, auto) minmax(390px, auto);
   gap: 18px;
+  align-items: stretch;
 }
 .analytics-skeleton {
   min-height: 0;
@@ -818,9 +825,8 @@
 .analytics-skeleton-small { grid-row: span 1; }
 .analytics-skeleton-medium { grid-column: span 2; grid-row: span 1; }
 .market-share-map {
-  grid-column: span 2;
-  grid-row: span 2;
-  min-height: 262px;
+  grid-area: market-map;
+  min-height: 340px;
   padding: 18px 20px;
   overflow: hidden;
 }
@@ -1032,14 +1038,13 @@
 .market-share-legend span { display: inline-flex; align-items: center; gap: 4px; }
 .market-share-legend i { width: 7px; height: 7px; border-radius: 50%; }
 .market-share-movers {
-  grid-column: span 2;
-  grid-row: span 1;
-  min-height: 176px;
+  grid-area: movers;
+  min-height: 190px;
   padding: 18px 20px;
 }
 .volume-oi-analysis {
-  grid-row: span 3;
-  min-height: 384px;
+  grid-area: volume-oi;
+  min-height: 668px;
   padding: 18px 20px;
   overflow: hidden;
 }
@@ -1095,9 +1100,8 @@
 .volume-oi-loading { margin-top: 26px; }
 .volume-oi-empty { min-height: 275px; }
 .volume-oi-share-analysis {
-  grid-column: span 2;
-  grid-row: span 2;
-  min-height: 262px;
+  grid-area: share-compare;
+  min-height: 310px;
   padding: 18px 20px;
   overflow: hidden;
 }
@@ -1112,8 +1116,7 @@
 .volume-oi-gap-list.negative strong { color: var(--down); }
 .volume-oi-share-empty { min-height: 210px; }
 .growth-matrix {
-  grid-column: span 2;
-  grid-row: span 3;
+  grid-area: growth;
   min-height: 384px;
   padding: 18px 20px;
   overflow: hidden;
@@ -1124,6 +1127,22 @@
   font-size: 9px;
   font-weight: 600;
 }
+.growth-matrix-inspector {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 3px 8px;
+  min-height: 27px;
+  margin: -2px 0 7px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--card-tint);
+  color: var(--ink-faint);
+  font-size: 8.5px;
+  font-weight: 600;
+}
+.growth-matrix-inspector strong,
+.growth-matrix-inspector b { color: var(--ink); }
 .growth-matrix-scroll { overflow: auto; max-height: 286px; }
 .growth-matrix table { width: 100%; min-width: 525px; border-collapse: collapse; }
 .growth-matrix th,
@@ -1132,6 +1151,8 @@
 .growth-matrix thead button { border: 0; padding: 0; background: transparent; color: inherit; cursor: pointer; font: inherit; font-weight: 700; text-transform: inherit; }
 .growth-matrix thead small { display: block; margin-top: 2px; color: var(--ink-faint); font-size: 7.5px; font-weight: 600; letter-spacing: 0; text-transform: none; }
 .growth-matrix tbody td { color: var(--ink); font-weight: 700; }
+.growth-matrix tbody td:focus { position: relative; z-index: 2; outline: 2px solid var(--sidebar); outline-offset: -2px; }
+.growth-matrix tbody td:hover { filter: brightness(.96); cursor: help; }
 .growth-matrix-dex { position: sticky; left: 0; z-index: 1; min-width: 92px; background: var(--card); color: var(--ink); font-size: 9.5px !important; font-weight: 700; text-align: left !important; }
 .growth-matrix thead .growth-matrix-dex { z-index: 3; }
 .growth-matrix-momentum { color: var(--ink-faint) !important; font-size: 8.5px !important; font-weight: 700; }
@@ -1405,7 +1426,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .analytics-skeleton-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr) minmax(340px, .9fr);
   }
 }
 @media (max-width: 720px) {
@@ -1454,34 +1475,46 @@
     grid-template-columns: 1fr;
   }
   .analytics-skeleton-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-rows: 104px;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "market-map"
+      "volume-oi"
+      "share-compare"
+      "movers"
+      "growth";
+    grid-template-rows: none;
+    grid-auto-rows: auto;
   }
   .market-share-map {
-    grid-column: 1 / -1;
-    grid-row: span 3;
+    grid-area: market-map;
+    grid-column: auto;
+    grid-row: auto;
     padding: 16px;
   }
   .market-share-movers {
-    grid-column: 1 / -1;
-    grid-row: span 3;
+    grid-area: movers;
+    grid-column: auto;
+    grid-row: auto;
     padding: 16px;
   }
   .volume-oi-analysis {
-    grid-column: 1 / -1;
-    grid-row: span 4;
+    grid-area: volume-oi;
+    grid-column: auto;
+    grid-row: auto;
     min-height: 416px;
     padding: 16px;
   }
   .volume-oi-share-analysis {
-    grid-column: 1 / -1;
-    grid-row: span 3;
+    grid-area: share-compare;
+    grid-column: auto;
+    grid-row: auto;
     min-height: 340px;
     padding: 16px;
   }
   .growth-matrix {
-    grid-column: 1 / -1;
-    grid-row: span 4;
+    grid-area: growth;
+    grid-column: auto;
+    grid-row: auto;
     min-height: 430px;
     padding: 16px;
   }

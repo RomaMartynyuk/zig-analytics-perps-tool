@@ -22,6 +22,10 @@ function formatChange(value, kind) {
   return `${value > 0 ? '+' : ''}${value.toFixed(1)}${kind === 'share' ? 'pp' : '%'}`;
 }
 
+function formatLevel(value) {
+  return Number.isFinite(value) ? `${value.toFixed(1)}%` : 'Unavailable';
+}
+
 function heatStyle(value, columnValues) {
   if (!Number.isFinite(value)) return undefined;
   const absolute = columnValues.map(Math.abs).sort((a, b) => a - b);
@@ -48,6 +52,7 @@ export default function GrowthMatrix() {
   const [period, setPeriod] = useState('7d');
   const [sortKey, setSortKey] = useState('volume');
   const [descending, setDescending] = useState(true);
+  const [activeCell, setActiveCell] = useState(null);
   const { data, loading, error, refetch } = useGrowthMatrixData(period);
   const periodLabel = PERIODS.find((option) => option.id === period)?.label;
   const protocols = useMemo(() => (Array.isArray(data?.protocols) ? data.protocols : []), [data?.protocols]);
@@ -66,7 +71,8 @@ export default function GrowthMatrix() {
     {!loading && !error && data?.sufficientHistory && !protocols.length && <div className="market-share-empty growth-matrix-empty"><strong>No comparable protocol history is available for this period.</strong></div>}
     {!loading && !error && data?.sufficientHistory && protocols.length > 0 && <>
       <div className="growth-matrix-meta">{formatDate(data.startDate)} → {formatDate(data.endDate)} · Volume/OI/TVL use percentage growth; Share uses percentage-point change.</div>
-      <div className="growth-matrix-scroll"><table><thead><tr><th className="growth-matrix-dex">DEX</th>{COLUMNS.map((column) => <th key={column.id}><button type="button" onClick={() => setSort(column.id)}>{column.label}{sortKey === column.id ? (descending ? ' ↓' : ' ↑') : ''}</button><small>{data.coverage?.[column.coverage] || 0} comparable</small></th>)}<th>Momentum</th></tr></thead><tbody>{sorted.map((protocol) => <tr key={protocol.slug}><th className="growth-matrix-dex" scope="row">{protocol.name}</th>{COLUMNS.map((column) => { const cell = protocol[column.id]; const value = column.kind === 'share' ? cell?.changePp : cell?.growthPct; return <td key={column.id} style={heatStyle(value, columnValues[column.id])} title={cellTooltip(protocol, column, data.startDate, data.endDate)}>{formatChange(value, column.kind)}</td>; })}<td className={`growth-matrix-momentum ${protocol.momentum || 'unavailable'}`}>{momentumLabel(protocol.momentum)}</td></tr>)}</tbody></table></div>
+      {activeCell && <div className="growth-matrix-inspector" role="status"><strong>{activeCell.protocol.name} · {activeCell.column.label}</strong><span>{formatDate(data.startDate)}: {activeCell.column.kind === 'share' ? formatLevel(activeCell.metric?.start) : formatUSD(activeCell.metric?.start)}</span><span>{formatDate(data.endDate)}: {activeCell.column.kind === 'share' ? formatLevel(activeCell.metric?.current) : formatUSD(activeCell.metric?.current)}</span><b>{activeCell.metric ? formatChange(activeCell.column.kind === 'share' ? activeCell.metric.changePp : activeCell.metric.growthPct, activeCell.column.kind) : 'Unavailable'}</b></div>}
+      <div className="growth-matrix-scroll"><table><thead><tr><th className="growth-matrix-dex">DEX</th>{COLUMNS.map((column) => <th key={column.id}><button type="button" onClick={() => setSort(column.id)}>{column.label}{sortKey === column.id ? (descending ? ' ↓' : ' ↑') : ''}</button><small>{data.coverage?.[column.coverage] || 0} comparable</small></th>)}<th>Momentum</th></tr></thead><tbody>{sorted.map((protocol) => <tr key={protocol.slug}><th className="growth-matrix-dex" scope="row">{protocol.name}</th>{COLUMNS.map((column) => { const cell = protocol[column.id]; const value = column.kind === 'share' ? cell?.changePp : cell?.growthPct; return <td key={column.id} tabIndex="0" onMouseEnter={() => setActiveCell({ protocol, column, metric: cell })} onFocus={() => setActiveCell({ protocol, column, metric: cell })} style={heatStyle(value, columnValues[column.id])} title={cellTooltip(protocol, column, data.startDate, data.endDate)}>{formatChange(value, column.kind)}</td>; })}<td className={`growth-matrix-momentum ${protocol.momentum || 'unavailable'}`}>{momentumLabel(protocol.momentum)}</td></tr>)}</tbody></table></div>
       <p className="growth-matrix-note">A protocol can grow in raw Volume while losing tracked Volume Share if the covered market grows faster.</p>
     </>}
   </section>;

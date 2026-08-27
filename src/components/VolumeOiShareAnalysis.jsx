@@ -59,7 +59,7 @@ function ShareScatter({ protocols, selectedSlug, onSelect, snapshotDate }) {
           <text x="12" y={padding.top + plotHeight / 2} textAnchor="middle" className="volume-oi-axis" transform={`rotate(-90 12 ${padding.top + plotHeight / 2})`}>Volume Share (%)</text>
           {points.map((point) => {
             const selectedPoint = point.slug === selectedSlug;
-            return <g key={point.slug} className="volume-oi-point" onClick={() => onSelect(point.slug)} onKeyDown={(event) => event.key === 'Enter' && onSelect(point.slug)} tabIndex="0" role="button" aria-label={`Select ${point.name}`}>
+            return <g key={point.slug} className="volume-oi-point" onMouseEnter={() => onSelect(point.slug)} onFocus={() => onSelect(point.slug)} onClick={() => onSelect(point.slug)} onKeyDown={(event) => event.key === 'Enter' && onSelect(point.slug)} tabIndex="0" role="button" aria-label={`Select ${point.name}`}>
               <circle cx={x(point.openInterestShare)} cy={y(point.volumeShare)} r={selectedPoint ? 6.5 : 5} fill={getProtocolColor(point.slug)} className={selectedPoint ? 'is-selected' : ''} />
               <title>{`${point.name}\n24h Volume: ${formatUSD(point.volume24h)}\nOpen Interest: ${formatUSD(point.openInterest)}\nVolume Share: ${formatShare(point.volumeShare)}\nOI Share: ${formatShare(point.openInterestShare)}\nShare Gap: ${formatGap(point.shareGapPp)}\nSnapshot: ${formatDate(snapshotDate)}\nSource: ${point.dataSource || '—'}`}</title>
               {highlighted.has(point.slug) && <text x={x(point.openInterestShare) + 7} y={y(point.volumeShare) - 7} className="volume-oi-label">{point.name}</text>}
