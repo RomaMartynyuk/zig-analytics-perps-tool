@@ -1,4 +1,4 @@
-import { getMarketShareMovers } from '../lib/analyticsService.js';
+import { getMarketShareMovers } from '../../server/analyticsService.js';
 
 export default async function handler(req, res) {
   try {

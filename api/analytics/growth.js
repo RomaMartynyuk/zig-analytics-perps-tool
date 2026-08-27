@@ -1,4 +1,4 @@
-import { getGrowthMetrics } from '../lib/analyticsService.js';
+import { getGrowthMetrics } from '../../server/analyticsService.js';
 
 export default async function handler(req, res) {
   try {

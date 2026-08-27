@@ -1,3 +1,4 @@
+// Pure server-side analytics calculations, also used by unit tests.
 export const PERIOD_DAYS = { '7d': 7, '30d': 30, '90d': 90 };
 
 export function toValidNumber(value) {

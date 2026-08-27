@@ -1,3 +1,4 @@
+// Server-only DefiLlama helpers shared by endpoints and daily collection.
 function asValidNonNegativeNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) && number >= 0 ? number : null;

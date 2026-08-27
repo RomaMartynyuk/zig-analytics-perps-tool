@@ -1,3 +1,4 @@
+// Server-only database access; kept outside api/ to avoid a Vercel Function entrypoint.
 import { neon } from '@neondatabase/serverless';
 
 export function getSql() {

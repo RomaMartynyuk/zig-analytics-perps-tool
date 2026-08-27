@@ -1,4 +1,4 @@
-import { getNormalizedDerivativesMetrics } from '../derivatives.js';
+import { getNormalizedDerivativesMetrics } from '../api/derivatives.js';
 import { getSql } from './db.js';
 import { getActiveProtocols } from './protocolRegistry.js';
 import { upsertDailySnapshot, syncProtocols } from './snapshotRepository.js';

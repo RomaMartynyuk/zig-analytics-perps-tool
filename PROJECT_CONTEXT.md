@@ -85,7 +85,7 @@ public/
   `protocol_daily_snapshots`. Ключ `(protocol_id, snapshot_date)` унікальний,
   тому collection idempotent: повторний запуск за один UTC-день оновлює, а не
   дублює рядок.
-- `api/lib/snapshotCollector.js` використовує вже наявні нормалізовані
+- `server/snapshotCollector.js` використовує вже наявні нормалізовані
   adapters з `api/derivatives.js` (`fresh: true`, без stale in-memory cache
   для snapshot) і один bounded-concurrency DefiLlama TVL fetch на проект.
   `projects.json` лишається єдиним registry; `metrics_key` є лише для Rise /
@@ -97,7 +97,7 @@ public/
   захищений `Authorization: Bearer $CRON_SECRET`. Потрібні Vercel env:
   `DATABASE_URL`, `CRON_SECRET`. Ручний перший snapshot: після `npm run
   db:migrate` виконати `npm run snapshots:collect` з доступним `DATABASE_URL`.
-- `api/lib/analyticsService.js` надає raw-data queries для market share,
+- `server/analyticsService.js` надає raw-data queries для market share,
   movers, concentration, growth і volume/OI. Не зберігати derived metrics.
   Endpoints у `api/analytics/*` повертають coverage і `sufficientHistory`;
   якщо немає необхідної кількості послідовних UTC-day observations, `values`

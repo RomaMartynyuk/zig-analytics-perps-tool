@@ -1,4 +1,4 @@
-import { fetchDefiLlamaProtocol } from './lib/tvl.js';
+import { fetchDefiLlamaProtocol } from '../server/tvl.js';
 
 // Vercel Serverless Function — runs server-side, so it isn't subject to
 // browser CORS restrictions the way a client-side fetch to api.llama.fi is.

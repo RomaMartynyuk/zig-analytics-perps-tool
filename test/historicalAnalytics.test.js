@@ -4,9 +4,9 @@ import {
   buildMarketShareHistory,
   buildMarketShareMovers,
   toValidNumber,
-} from '../api/lib/analyticsMath.js';
-import { collectDailyProtocolSnapshots, utcSnapshotDate, validMetric } from '../api/lib/snapshotCollector.js';
-import { upsertDailySnapshot } from '../api/lib/snapshotRepository.js';
+} from '../server/analyticsMath.js';
+import { collectDailyProtocolSnapshots, utcSnapshotDate, validMetric } from '../server/snapshotCollector.js';
+import { upsertDailySnapshot } from '../server/snapshotRepository.js';
 
 function rowsForDays(days, firstValue = 25, lastValue = firstValue) {
   return Array.from({ length: days }, (_, index) => {

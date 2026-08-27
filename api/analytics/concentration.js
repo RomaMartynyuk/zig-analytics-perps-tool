@@ -1,4 +1,4 @@
-import { getMarketConcentrationHistory } from '../lib/analyticsService.js';
+import { getMarketConcentrationHistory } from '../../server/analyticsService.js';
 
 export default async function handler(req, res) {
   try {

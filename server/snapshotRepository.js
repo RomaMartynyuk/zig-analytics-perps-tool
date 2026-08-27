@@ -1,3 +1,4 @@
+// Server-only persistence operations for normalized daily snapshots.
 export async function syncProtocols(sql, protocols) {
   const rows = await Promise.all(protocols.map(async (protocol) => {
     const result = await sql`

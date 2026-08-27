@@ -1,4 +1,4 @@
-import { collectDailyProtocolSnapshots } from '../api/lib/snapshotCollector.js';
+import { collectDailyProtocolSnapshots } from '../server/snapshotCollector.js';
 
 const summary = await collectDailyProtocolSnapshots();
 console.log(JSON.stringify(summary, null, 2));

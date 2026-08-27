@@ -1,4 +1,5 @@
-import projects from '../../src/data/projects.json' with { type: 'json' };
+// Server-only configured protocol registry.
+import projects from '../src/data/projects.json' with { type: 'json' };
 
 /**
  * The projects config remains the only protocol registry. `metrics_key` is

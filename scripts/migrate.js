@@ -1,6 +1,6 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { getSql } from '../api/lib/db.js';
+import { getSql } from '../server/db.js';
 
 const migrationsDirectory = new URL('../migrations/', import.meta.url);
 const sql = getSql();

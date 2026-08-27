@@ -1,4 +1,4 @@
-import { getMarketShareHistory } from '../lib/analyticsService.js';
+import { getMarketShareHistory } from '../../server/analyticsService.js';
 
 export default async function handler(req, res) {
   try {
