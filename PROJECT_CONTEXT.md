@@ -90,6 +90,9 @@ public/
   для snapshot) і один bounded-concurrency DefiLlama TVL fetch на проект.
   `projects.json` лишається єдиним registry; `metrics_key` є лише для Rise /
   TradeHotStuff / Grvt, де display name відрізняється від adapter name.
+  `getConfiguredProtocols()` синхронізує також inactive records у БД, а нові
+  snapshot-и бере тільки для active — старі snapshot-и disabled DEX не
+  видаляються.
 - `NULL` означає unavailable/invalid metric; `0` — лише реальне нульове
   вимірювання. Collector не підміняє failure нулем і продовжує роботу, якщо
   окремий протокол/TVL/API падає.
@@ -190,6 +193,8 @@ Vercel Cron.
   protocols і provenance tooltip; 7D/30D/90D використовують `/api/analytics/
   market-share` та показують progress state, доки `sufficientHistory` не стане
   true. Інші canvas-картки залишаються пустими.
+  Top-N та color selection обчислюються динамічно за stable slug, coverage і
+  missing list приходять із API; немає прив'язки до 20 поточних проєктів.
 - **News-картка — порожній стан**, RSS/новини не підключені (Фаза 3
   оригінального плану).
 - **News/Calendar/Community/Settings** навмисно приховані з sidebar, доки

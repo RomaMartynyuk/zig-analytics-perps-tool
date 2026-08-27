@@ -1,6 +1,6 @@
 import { getNormalizedDerivativesMetrics } from '../api/derivatives.js';
 import { getSql } from './db.js';
-import { getActiveProtocols } from './protocolRegistry.js';
+import { getConfiguredProtocols } from './protocolRegistry.js';
 import { upsertDailySnapshot, syncProtocols } from './snapshotRepository.js';
 import { fetchDefiLlamaTvlSnapshot } from './tvl.js';
 
@@ -40,18 +40,19 @@ function resolveDataSource(metrics, tvlSnapshot) {
 export async function collectDailyProtocolSnapshots({
   now = new Date(),
   sql = getSql(),
-  protocols = getActiveProtocols(),
+  protocols = getConfiguredProtocols(),
   loadMetrics = () => getNormalizedDerivativesMetrics({ fresh: true }),
   loadTvl = fetchDefiLlamaTvlSnapshot,
   log = console,
 } = {}) {
   const snapshotDate = utcSnapshotDate(now);
+  const activeProtocols = protocols.filter((protocol) => protocol.isActive);
   const [databaseProtocols, metricRows] = await Promise.all([
     syncProtocols(sql, protocols),
     loadMetrics(),
   ]);
   const metricsByName = new Map(metricRows.map((metric) => [metric.name, metric]));
-  const tvlRows = await mapWithConcurrency(protocols, 4, async (protocol) => {
+  const tvlRows = await mapWithConcurrency(activeProtocols, 4, async (protocol) => {
     try {
       return { slug: protocol.slug, value: await loadTvl(protocol.defillamaSlug) };
     } catch (error) {
@@ -62,7 +63,7 @@ export async function collectDailyProtocolSnapshots({
   const tvlBySlug = new Map(tvlRows.map((row) => [row.slug, row.value]));
   const summary = { snapshotDate, saved: 0, partial: 0, failed: 0, failures: [] };
 
-  await mapWithConcurrency(protocols, 4, async (protocol) => {
+  await mapWithConcurrency(activeProtocols, 4, async (protocol) => {
     const databaseProtocol = databaseProtocols.get(protocol.slug);
     const metrics = metricsByName.get(protocol.metricsKey) || null;
     const tvlSnapshot = tvlBySlug.get(protocol.slug) || { tvl: null, dataSource: null, sourceUpdatedAt: null };

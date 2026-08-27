@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { formatUSD } from '../lib/format';
+import { selectTopMarketShareSeries } from '../lib/marketShare';
 import { useMarketShareData } from '../hooks/useMarketShareData';
 
 const METRICS = [
@@ -12,7 +13,6 @@ const PERIODS = [
   { id: '30d', label: '30D' },
   { id: '90d', label: '90D' },
 ];
-const SERIES_COLORS = ['#285c43', '#4d769f', '#b36d3f', '#8f4d5a', '#7a6cbd'];
 
 function formatDate(value) {
   if (!value) return '—';
@@ -32,18 +32,7 @@ function formatShare(value) {
 }
 
 function HistoricalShareChart({ values, metric }) {
-  const { dates, series } = useMemo(() => {
-    const dates = [...new Set(values.map((value) => value.date))].sort();
-    const latestDate = dates.at(-1);
-    const latest = values.filter((value) => value.date === latestDate).sort((a, b) => b.share - a.share);
-    const topSlugs = latest.slice(0, 5).map((value) => value.protocol.slug);
-    const series = topSlugs.map((slug, index) => ({
-      slug,
-      color: SERIES_COLORS[index],
-      points: dates.map((date) => values.find((value) => value.date === date && value.protocol.slug === slug)).filter(Boolean),
-    }));
-    return { dates, series };
-  }, [values]);
+  const { dates, series } = useMemo(() => selectTopMarketShareSeries(values), [values]);
 
   if (!dates.length) return null;
   const width = 640;
@@ -93,9 +82,12 @@ function HistoricalShareChart({ values, metric }) {
 
 function CurrentShareBars({ values, metric }) {
   const valueLabel = METRICS.find((option) => option.id === metric)?.valueLabel;
+  const safeValues = Array.isArray(values)
+    ? values.filter((item) => item?.protocol?.slug && item?.protocol?.name && Number.isFinite(item?.value) && Number.isFinite(item?.share))
+    : [];
   return (
     <div className="market-share-bars">
-      {values.map((item) => (
+      {safeValues.map((item) => (
         <div className="market-share-row" key={item.protocol.slug}>
           <span className="market-share-rank">#{item.rank}</span>
           <span className="market-share-name">{item.protocol.name}</span>
@@ -122,6 +114,7 @@ export default function MarketShareMap() {
   const periodLabel = PERIODS.find((option) => option.id === period)?.label;
   const coverage = data?.coverage;
   const capturedAt = formatCapturedAt(data?.capturedAt);
+  const currentValues = Array.isArray(data?.values) ? data.values : [];
 
   return (
     <section className="card market-share-map" aria-label="Market Share Map">
@@ -154,18 +147,18 @@ export default function MarketShareMap() {
         </div>
       )}
 
-      {!loading && !error && period === 'current' && (!data?.snapshotDate || !data.values.length) && (
+      {!loading && !error && period === 'current' && (!data?.snapshotDate || !currentValues.length) && (
         <div className="market-share-empty"><strong>No canonical daily snapshot is available yet.</strong><span>It will appear after the first successful 12:00 UTC collection.</span></div>
       )}
 
-      {!loading && !error && period === 'current' && data?.snapshotDate && data.values.length > 0 && (
+      {!loading && !error && period === 'current' && data?.snapshotDate && currentValues.length > 0 && (
         <div className="market-share-current">
           <div className="market-share-meta">Snapshot: {formatDate(data.snapshotDate)}{capturedAt ? ` · Captured at ${capturedAt} UTC` : ''}</div>
-          <CurrentShareBars values={data.values} metric={metric} />
+          <CurrentShareBars values={currentValues} metric={metric} />
           {coverage?.missing > 0 && (
             <details className="market-share-missing">
               <summary>Data still being collected for {coverage.missing} tracked protocols</summary>
-              <span>{data.missingProtocols.map((protocol) => protocol.name).join(', ')}</span>
+              <span>{(Array.isArray(data.missingProtocols) ? data.missingProtocols : []).map((protocol) => protocol?.name).filter(Boolean).join(', ')}</span>
             </details>
           )}
         </div>

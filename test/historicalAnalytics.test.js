@@ -8,6 +8,7 @@ import {
 } from '../server/analyticsMath.js';
 import { collectDailyProtocolSnapshots, utcSnapshotDate, validMetric } from '../server/snapshotCollector.js';
 import { upsertDailySnapshot } from '../server/snapshotRepository.js';
+import { selectTopMarketShareSeries } from '../src/lib/marketShare.js';
 
 function rowsForDays(days, firstValue = 25, lastValue = firstValue) {
   return Array.from({ length: days }, (_, index) => {
@@ -67,6 +68,54 @@ test('current market share excludes NULL protocols and returns coverage, names, 
   assert.equal(current.values[0].rank, 1);
   assert.equal(current.values[0].share + current.values[1].share, 100);
   assert.deepEqual(current.missingProtocols, [{ slug: 'missing', name: 'Missing' }]);
+});
+
+test('new protocols participate only in metrics they actually report', () => {
+  const volume = buildCurrentMarketShare([
+    { slug: 'existing', name: 'Existing', metric_value: 100 },
+    { slug: 'new-volume', name: 'New Volume', metric_value: 100 },
+    { slug: 'new-oi-only', name: 'New OI Only', metric_value: null },
+    { slug: 'new-empty', name: 'New Empty', metric_value: null },
+  ], { metric: 'volume', totalProtocols: 4 });
+  assert.equal(volume.coverage.available, 2);
+  assert.equal(volume.coverage.total, 4);
+  assert.equal(volume.values[0].share + volume.values[1].share, 100);
+  assert.deepEqual(volume.missingProtocols.map((protocol) => protocol.slug), ['new-oi-only', 'new-empty']);
+
+  const oi = buildCurrentMarketShare([
+    { slug: 'existing', name: 'Existing', metric_value: 20 },
+    { slug: 'new-volume', name: 'New Volume', metric_value: null },
+    { slug: 'new-oi-only', name: 'New OI Only', metric_value: 80 },
+    { slug: 'new-empty', name: 'New Empty', metric_value: null },
+  ], { metric: 'open_interest', totalProtocols: 4 });
+  assert.equal(oi.coverage.available, 2);
+  assert.equal(oi.values[0].protocol.slug, 'new-oi-only');
+  assert.equal(oi.values[0].share, 80);
+});
+
+test('Top N history selection is slug-driven and promotes a new protocol automatically', () => {
+  const values = ['a', 'b', 'c', 'd', 'e', 'f'].flatMap((slug, index) => ([
+    { date: '2026-08-27', protocol: { slug, name: slug }, share: index + 1 },
+    { date: '2026-08-28', protocol: { slug, name: slug }, share: slug === 'f' ? 60 : index + 1 },
+  ]));
+  const result = selectTopMarketShareSeries(values);
+  assert.equal(result.series.length, 5);
+  assert.equal(result.series[0].slug, 'f');
+  assert.ok(result.series.some((series) => series.slug === 'f'));
+});
+
+test('a 30-plus protocol universe preserves dynamic coverage and response shape', () => {
+  const rows = Array.from({ length: 33 }, (_, index) => ({
+    slug: `protocol-${index}`,
+    name: `Protocol ${index}`,
+    metric_value: index + 1,
+  }));
+  const current = buildCurrentMarketShare(rows, { metric: 'volume', totalProtocols: 33 });
+  assert.equal(current.coverage.available, 33);
+  assert.equal(current.coverage.total, 33);
+  assert.equal(current.values.length, 33);
+  assert.equal(current.values[0].rank, 1);
+  assert.equal(current.values.reduce((sum, value) => sum + value.share, 0).toFixed(6), '100.000000');
 });
 
 test('market-share movers return percentage-point changes and ranks', () => {
@@ -153,4 +202,22 @@ test('one protocol failure does not stop the rest of the daily collector', async
   assert.equal(summary.failed, 1);
   assert.equal(summary.partial, 1);
   assert.equal(calls.filter((call) => call.text.includes('INSERT INTO protocol_daily_snapshots')).length, 2);
+});
+
+test('inactive configured protocols are synced but do not receive new daily snapshots', async () => {
+  const { sql, calls } = fakeSql();
+  const summary = await collectDailyProtocolSnapshots({
+    now: new Date('2026-08-27T12:00:00Z'),
+    sql,
+    protocols: [
+      { slug: 'alpha', name: 'Alpha', metricsKey: 'Alpha', defillamaSlug: 'alpha', isActive: true },
+      { slug: 'beta', name: 'Beta', metricsKey: 'Beta', defillamaSlug: 'beta', isActive: false },
+    ],
+    loadMetrics: async () => [{ name: 'Alpha', dataSource: 'alpha_api', volume: 1, openInterest: 1 }],
+    loadTvl: async () => ({ tvl: 1, dataSource: 'defillama', sourceUpdatedAt: null }),
+    log: { info() {}, error() {} },
+  });
+  assert.equal(summary.saved, 1);
+  assert.equal(calls.filter((call) => call.text.includes('INSERT INTO protocols')).length, 2);
+  assert.equal(calls.filter((call) => call.text.includes('INSERT INTO protocol_daily_snapshots')).length, 1);
 });

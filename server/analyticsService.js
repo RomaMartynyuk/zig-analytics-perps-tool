@@ -28,7 +28,7 @@ async function getMetricRows(sql, metric) {
     SELECT s.snapshot_date, p.slug, p.name, s.${column} AS metric_value, s.data_source
     FROM protocol_daily_snapshots s
     JOIN protocols p ON p.id = s.protocol_id
-    WHERE p.is_active = TRUE AND s.${column} IS NOT NULL
+    WHERE s.${column} IS NOT NULL
     ORDER BY s.snapshot_date ASC, p.slug ASC
   `);
 }
@@ -59,8 +59,13 @@ export async function getMarketShare({ metric, period, protocols } = {}, sql = g
 }
 
 export async function getMarketShareHistory({ metric, period, protocols } = {}, sql = getSql()) {
-  const [rows, totalProtocols] = await Promise.all([getMetricRows(sql, metric), getActiveProtocolCount(sql)]);
-  return { metric, ...buildMarketShareHistory(rows, { period, totalProtocols, protocols }) };
+  // Historical rows remain relevant after a protocol is disabled. Current
+  // mode filters by is_active, while this query preserves recorded history.
+  const [rows, totalProtocols] = await Promise.all([
+    getMetricRows(sql, metric),
+    sql`SELECT COUNT(*)::int AS count FROM protocols`,
+  ]);
+  return { metric, ...buildMarketShareHistory(rows, { period, totalProtocols: Number(totalProtocols[0]?.count || 0), protocols }) };
 }
 
 export async function getMarketShareMovers({ metric, period } = {}, sql = getSql()) {
