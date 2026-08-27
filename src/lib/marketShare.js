@@ -1,8 +1,8 @@
 const SERIES_PALETTE = ['#285c43', '#4d769f', '#b36d3f', '#8f4d5a', '#7a6cbd', '#3f8a82', '#aa7d2e'];
 
-function colorForSlug(slug) {
+export function getProtocolColor(slug) {
   let hash = 0;
-  for (const character of slug) hash = ((hash << 5) - hash + character.charCodeAt(0)) | 0;
+  for (const character of String(slug || 'unknown')) hash = ((hash << 5) - hash + character.charCodeAt(0)) | 0;
   return SERIES_PALETTE[Math.abs(hash) % SERIES_PALETTE.length];
 }
 
@@ -23,7 +23,7 @@ export function selectTopMarketShareSeries(values, limit = 5) {
     dates,
     series: topSlugs.map((slug) => ({
       slug,
-      color: colorForSlug(slug),
+      color: getProtocolColor(slug),
       points: dates.map((date) => safeValues.find((value) => value.date === date && value.protocol.slug === slug)).filter(Boolean),
     })),
   };

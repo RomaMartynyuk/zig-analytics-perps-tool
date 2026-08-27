@@ -71,6 +71,62 @@ export function buildCurrentMarketShare(rows, { metric, snapshotDate, capturedAt
   };
 }
 
+export function buildVolumeOiAnalysis(rows, { snapshotDate, capturedAt, totalProtocols }) {
+  const normalized = rows.map((row) => ({
+    ...row,
+    volume: toValidNumber(row.volume_24h),
+    openInterest: toValidNumber(row.open_interest),
+  }));
+  const volumeRows = normalized.filter((row) => row.volume != null);
+  const oiRows = normalized.filter((row) => row.openInterest != null);
+  const totalVolume = volumeRows.reduce((sum, row) => sum + row.volume, 0);
+  const totalOi = oiRows.reduce((sum, row) => sum + row.openInterest, 0);
+  const volumeRanks = new Map(volumeRows.slice().sort((a, b) => b.volume - a.volume).map((row, index) => [row.slug, index + 1]));
+  const oiRanks = new Map(oiRows.slice().sort((a, b) => b.openInterest - a.openInterest).map((row, index) => [row.slug, index + 1]));
+  const eligible = normalized.filter((row) => row.volume != null && row.openInterest != null && row.volume > 0 && row.openInterest > 0)
+    .map((row) => ({
+      id: row.id,
+      slug: row.slug,
+      name: row.name,
+      volume24h: row.volume,
+      openInterest: row.openInterest,
+      volumeOiRatio: row.volume / row.openInterest,
+      volumeShare: totalVolume > 0 ? (row.volume / totalVolume) * 100 : null,
+      openInterestShare: totalOi > 0 ? (row.openInterest / totalOi) * 100 : null,
+      volumeRank: volumeRanks.get(row.slug) || null,
+      openInterestRank: oiRanks.get(row.slug) || null,
+      dataSource: row.data_source || null,
+    }));
+  const ratios = eligible.map((row) => row.volumeOiRatio).sort((a, b) => a - b);
+  const middle = Math.floor(ratios.length / 2);
+  const medianRatio = ratios.length
+    ? (ratios.length % 2 ? ratios[middle] : (ratios[middle - 1] + ratios[middle]) / 2)
+    : null;
+  const rankedHigh = eligible.slice().sort((a, b) => b.volumeOiRatio - a.volumeOiRatio)
+    .slice(0, 5).map((row, index) => ({ ...row, ratioRank: index + 1 }));
+  const rankedLow = eligible.slice().sort((a, b) => a.volumeOiRatio - b.volumeOiRatio)
+    .slice(0, 5).map((row, index) => ({ ...row, ratioRank: index + 1 }));
+  const missingProtocols = normalized.filter((row) => !(row.volume != null && row.openInterest != null && row.volume > 0 && row.openInterest > 0))
+    .map((row) => ({ slug: row.slug, name: row.name }));
+
+  return {
+    snapshotDate: snapshotDate || null,
+    capturedAt: capturedAt || null,
+    coverage: {
+      total: totalProtocols,
+      volumeAvailable: volumeRows.length,
+      openInterestAvailable: oiRows.length,
+      scatterEligible: eligible.length,
+      missing: Math.max(totalProtocols - eligible.length, 0),
+    },
+    medianRatio,
+    protocols: eligible,
+    highestRatios: rankedHigh,
+    lowestRatios: rankedLow,
+    missingProtocols,
+  };
+}
+
 export function buildMarketShareHistory(rows, { period, totalProtocols, protocols } = {}) {
   const requiredDays = PERIOD_DAYS[period];
   if (!requiredDays) throw new Error('Unsupported period');

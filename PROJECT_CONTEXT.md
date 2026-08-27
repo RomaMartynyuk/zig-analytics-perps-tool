@@ -199,6 +199,11 @@ Vercel Cron.
   0. Інші canvas-картки залишаються пустими.
   Top-N та color selection обчислюються динамічно за stable slug, coverage і
   missing list приходять із API; немає прив'язки до 20 поточних проєктів.
+  Третій модуль у високій центральній картці — **Volume vs Open Interest**:
+  scatter для одного canonical UTC snapshot, Log/Linear scale, 1.0x reference
+  line, tooltip/selection, Top-3 highest/lowest Volume/OI та median. У scatter
+  входять лише протоколи з позитивними Volume і OI, але Volume/OI share
+  denominator окремо включає всі валідні значення відповідної метрики.
 - **News-картка — порожній стан**, RSS/новини не підключені (Фаза 3
   оригінального плану).
 - **News/Calendar/Community/Settings** навмисно приховані з sidebar, доки

@@ -1,5 +1,6 @@
 import MarketShareMap from './MarketShareMap';
 import MarketShareMovers from './MarketShareMovers';
+import VolumeOiAnalysis from './VolumeOiAnalysis';
 
 export default function AnalyticsPage() {
   return (
@@ -14,7 +15,7 @@ export default function AnalyticsPage() {
 
       <div className="analytics-skeleton-grid">
         <MarketShareMap />
-        <div className="card analytics-skeleton analytics-skeleton-tall" aria-hidden="true" />
+        <VolumeOiAnalysis />
         <div className="card analytics-skeleton analytics-skeleton-small" aria-hidden="true" />
         <MarketShareMovers />
         <div className="card analytics-skeleton analytics-skeleton-small" aria-hidden="true" />

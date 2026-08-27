@@ -4,6 +4,7 @@ import {
   buildCurrentMarketShare,
   buildMarketShareHistory,
   buildMarketShareMovers,
+  buildVolumeOiAnalysis,
   toValidNumber,
 } from '../server/analyticsMath.js';
 import { collectDailyProtocolSnapshots, utcSnapshotDate, validMetric } from '../server/snapshotCollector.js';
@@ -180,6 +181,47 @@ test('invalid and missing metrics stay NULL rather than becoming zero', () => {
   assert.equal(validMetric(-1), null);
   assert.equal(validMetric('malformed'), null);
   assert.equal(validMetric(null), null);
+});
+
+test('Volume/OI analysis uses all valid metric values for shares and only positive paired values for scatter points', () => {
+  const analysis = buildVolumeOiAnalysis([
+    { id: 1, slug: 'alpha', name: 'Alpha', volume_24h: 100, open_interest: 20, data_source: 'alpha_api' },
+    { id: 2, slug: 'beta', name: 'Beta', volume_24h: 50, open_interest: 100, data_source: 'beta_api' },
+    { id: 3, slug: 'volume-only', name: 'Volume Only', volume_24h: 50, open_interest: null },
+    { id: 4, slug: 'oi-only', name: 'OI Only', volume_24h: null, open_interest: 80 },
+    { id: 5, slug: 'zero-oi', name: 'Zero OI', volume_24h: 20, open_interest: 0 },
+    { id: 6, slug: 'invalid', name: 'Invalid', volume_24h: -1, open_interest: 'bad' },
+  ], { snapshotDate: '2026-08-27', capturedAt: '2026-08-27T12:00:00.000Z', totalProtocols: 6 });
+  const alpha = analysis.protocols.find((protocol) => protocol.slug === 'alpha');
+  const beta = analysis.protocols.find((protocol) => protocol.slug === 'beta');
+  assert.equal(analysis.snapshotDate, '2026-08-27');
+  assert.equal(analysis.coverage.volumeAvailable, 4);
+  assert.equal(analysis.coverage.openInterestAvailable, 4);
+  assert.equal(analysis.coverage.scatterEligible, 2);
+  assert.equal(analysis.coverage.missing, 4);
+  assert.equal(alpha.volumeOiRatio, 5);
+  assert.equal(alpha.volumeShare, 100 / 220 * 100);
+  assert.equal(alpha.openInterestShare, 10);
+  assert.equal(beta.volumeShare, 50 / 220 * 100);
+  assert.equal(beta.openInterestShare, 50);
+  assert.equal(analysis.medianRatio, 2.75);
+  assert.equal(analysis.highestRatios[0].slug, 'alpha');
+  assert.equal(analysis.lowestRatios[0].slug, 'beta');
+  assert.deepEqual(analysis.missingProtocols.map((protocol) => protocol.slug), ['volume-only', 'oi-only', 'zero-oi', 'invalid']);
+});
+
+test('Volume/OI analysis automatically admits new valid protocols and isolates malformed records', () => {
+  const analysis = buildVolumeOiAnalysis([
+    { id: 1, slug: 'existing', name: 'Existing', volume_24h: 10, open_interest: 10 },
+    { id: 2, slug: 'new-dex', name: 'New DEX', volume_24h: 90, open_interest: 30 },
+    { id: 3, slug: 'broken', name: 'Broken', volume_24h: 'not-a-number', open_interest: 8 },
+  ], { snapshotDate: '2026-08-27', totalProtocols: 3 });
+  assert.equal(analysis.protocols.length, 2);
+  assert.equal(analysis.coverage.scatterEligible, 2);
+  assert.equal(analysis.coverage.volumeAvailable, 2);
+  assert.equal(analysis.coverage.openInterestAvailable, 3);
+  assert.equal(analysis.highestRatios[0].slug, 'new-dex');
+  assert.equal(analysis.protocols.reduce((sum, protocol) => sum + protocol.volumeShare, 0), 100);
 });
 
 test('UTC snapshot identity is independent from a local timezone', () => {

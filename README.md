@@ -281,6 +281,12 @@ Top-5 `gainers` and `losers`, plus `coverage.currentAvailable`,
 `coverage.eligible`, and `coverage.comparisonUnavailable`. A protocol must
 have a valid selected metric at both comparison dates to be ranked; movement is
 reported in percentage points, never percent growth.
+`/api/analytics/volume-oi` uses one latest canonical UTC snapshot for the
+cross-section. It returns only protocols with valid positive Volume and OI as
+scatter points, while Volume Share and OI Share keep their own denominators of
+all active protocols reporting the corresponding metric. The response includes
+dynamic coverage, provenance, ranks, median Volume/OI, and Top-5 high/low
+turnover ratios. Missing values remain missing and never become zero.
 For rolling 24h volume, growth compares the average of the latest N daily
 observations with the previous N observations; it is not labelled as a period
 sum. `volume-oi` calculates denominators using only protocols with a valid

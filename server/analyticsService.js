@@ -2,11 +2,11 @@ import { getSql } from './db.js';
 import {
   PERIOD_DAYS,
   buildCurrentMarketShare,
+  buildVolumeOiAnalysis,
   buildGrowthMetrics,
   buildMarketConcentrationHistory,
   buildMarketShareHistory,
   buildMarketShareMovers,
-  toValidNumber,
 } from './analyticsMath.js';
 
 const METRIC_COLUMNS = { volume: 'volume_24h', open_interest: 'open_interest', tvl: 'tvl' };
@@ -89,38 +89,19 @@ export async function getGrowthMetrics({ metric, period } = {}, sql = getSql()) 
 }
 
 export async function getVolumeOiAnalysis(sql = getSql()) {
-  const latestRows = await sql.query(`
-    SELECT s.snapshot_date, p.slug, p.name, s.volume_24h, s.open_interest
-    FROM protocol_daily_snapshots s
-    JOIN protocols p ON p.id = s.protocol_id
+  const [latestSnapshot, totalProtocols] = await Promise.all([
+    sql`SELECT MAX(snapshot_date) AS snapshot_date, MAX(captured_at) AS captured_at FROM protocol_daily_snapshots`,
+    getActiveProtocolCount(sql),
+  ]);
+  const snapshotDate = latestSnapshot[0]?.snapshot_date || null;
+  const capturedAt = latestSnapshot[0]?.captured_at || null;
+  const rows = await sql.query(`
+    SELECT p.id, p.slug, p.name, s.volume_24h, s.open_interest, s.data_source
+    FROM protocols p
+    LEFT JOIN protocol_daily_snapshots s
+      ON s.protocol_id = p.id AND s.snapshot_date = $1::date
     WHERE p.is_active = TRUE
-      AND s.snapshot_date = (SELECT MAX(snapshot_date) FROM protocol_daily_snapshots)
     ORDER BY p.slug ASC
-  `);
-  const totalProtocols = await getActiveProtocolCount(sql);
-  const validVolume = latestRows.filter((row) => toValidNumber(row.volume_24h) != null);
-  const validOi = latestRows.filter((row) => toValidNumber(row.open_interest) != null);
-  const totalVolume = validVolume.reduce((sum, row) => sum + toValidNumber(row.volume_24h), 0);
-  const totalOi = validOi.reduce((sum, row) => sum + toValidNumber(row.open_interest), 0);
-
-  return {
-    snapshotDate: latestRows[0]?.snapshot_date || null,
-    coverage: {
-      totalProtocols,
-      volumeProtocols: validVolume.length,
-      openInterestProtocols: validOi.length,
-    },
-    values: latestRows.map((row) => {
-      const volume = toValidNumber(row.volume_24h);
-      const openInterest = toValidNumber(row.open_interest);
-      return {
-        protocol: { slug: row.slug, name: row.name },
-        volume,
-        openInterest,
-        volumeOiRatio: volume != null && openInterest != null && openInterest > 0 ? volume / openInterest : null,
-        volumeMarketShare: volume != null && totalVolume > 0 ? (volume / totalVolume) * 100 : null,
-        openInterestMarketShare: openInterest != null && totalOi > 0 ? (openInterest / totalOi) * 100 : null,
-      };
-    }),
-  };
+  `, [snapshotDate]);
+  return buildVolumeOiAnalysis(rows, { snapshotDate, capturedAt, totalProtocols });
 }
