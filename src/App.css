@@ -895,9 +895,10 @@
 }
 .market-share-bars {
   display: grid;
-  gap: 5px;
-  max-height: 178px;
-  overflow: auto;
+  gap: 3px;
+  max-height: 252px;
+  overflow-y: auto;
+  overflow-x: visible;
   padding-right: 4px;
 }
 .market-share-row {
@@ -906,6 +907,7 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
+  min-height: 14px;
 }
 .market-share-rank {
   color: var(--ink-faint);
@@ -1059,7 +1061,7 @@
   line-height: 1.35;
 }
 .volume-oi-chart { margin-top: 1px; }
-.volume-oi-chart svg { display: block; width: 100%; height: 205px; overflow: visible; }
+.volume-oi-chart svg { display: block; width: 100%; height: 235px; overflow: visible; }
 .volume-oi-gridline { stroke: var(--line); stroke-width: 1; }
 .volume-oi-axis-line { stroke: var(--line); stroke-width: 1; }
 .volume-oi-axis,
@@ -1102,6 +1104,22 @@
 .volume-oi-missing { margin-top: 5px; }
 .volume-oi-loading { margin-top: 26px; }
 .volume-oi-empty { min-height: 275px; }
+.market-share-map,
+.market-share-movers,
+.volume-oi-analysis,
+.volume-oi-share-analysis,
+.growth-matrix { position: relative; }
+.analytics-module-credit {
+  position: absolute;
+  right: 20px;
+  bottom: 14px;
+  color: var(--ink-faint);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  opacity: .72;
+  pointer-events: none;
+}
 .volume-oi-share-analysis {
   grid-area: share-compare;
   min-height: 330px;

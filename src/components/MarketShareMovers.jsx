@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { formatUSD } from '../lib/format';
 import { useMarketShareMoversData } from '../hooks/useMarketShareMoversData';
+import AnalyticsCredit from './AnalyticsCredit';
 
 const METRICS = [
   { id: 'volume', label: 'Volume', valueLabel: '24h volume' },
@@ -112,6 +113,7 @@ export default function MarketShareMovers() {
           </div>
         </>
       )}
+      <AnalyticsCredit />
     </section>
   );
 }

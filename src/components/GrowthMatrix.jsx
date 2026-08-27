@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { formatUSD } from '../lib/format';
 import { growthSortValue, sortGrowthRows } from '../lib/growthMatrix';
 import { useGrowthMatrixData } from '../hooks/useGrowthMatrixData';
+import AnalyticsCredit from './AnalyticsCredit';
 
 const PERIODS = [{ id: '7d', label: '7D' }, { id: '30d', label: '30D' }, { id: '90d', label: '90D' }];
 const COLUMNS = [
@@ -75,5 +76,6 @@ export default function GrowthMatrix() {
       <div className="growth-matrix-scroll"><table><thead><tr><th className="growth-matrix-dex">DEX</th>{COLUMNS.map((column) => <th key={column.id}><button type="button" onClick={() => setSort(column.id)}>{column.label}{sortKey === column.id ? (descending ? ' ↓' : ' ↑') : ''}</button><small>{data.coverage?.[column.coverage] || 0} comparable</small></th>)}<th>Momentum</th></tr></thead><tbody>{sorted.map((protocol) => <tr key={protocol.slug}><th className="growth-matrix-dex" scope="row">{protocol.name}</th>{COLUMNS.map((column) => { const cell = protocol[column.id]; const value = column.kind === 'share' ? cell?.changePp : cell?.growthPct; return <td key={column.id} tabIndex="0" onMouseEnter={() => setActiveCell({ protocol, column, metric: cell })} onFocus={() => setActiveCell({ protocol, column, metric: cell })} style={heatStyle(value, columnValues[column.id])} title={cellTooltip(protocol, column, data.startDate, data.endDate)}>{formatChange(value, column.kind)}</td>; })}<td className={`growth-matrix-momentum ${protocol.momentum || 'unavailable'}`}>{momentumLabel(protocol.momentum)}</td></tr>)}</tbody></table></div>
       <p className="growth-matrix-note">A protocol can grow in raw Volume while losing tracked Volume Share if the covered market grows faster.</p>
     </>}
+    <AnalyticsCredit />
   </section>;
 }

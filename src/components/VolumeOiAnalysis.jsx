@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { formatUSD } from '../lib/format';
 import { getProtocolColor } from '../lib/marketShare';
 import { useVolumeOiAnalysisData } from '../hooks/useVolumeOiAnalysisData';
+import AnalyticsCredit from './AnalyticsCredit';
 
 function formatDate(value) {
   if (!value) return '—';
@@ -155,6 +156,7 @@ export default function VolumeOiAnalysis() {
           {coverage?.missing > 0 && <details className="market-share-missing volume-oi-missing"><summary>{coverage.missing} tracked protocols are missing Volume or OI for this snapshot</summary><span>{(Array.isArray(data.missingProtocols) ? data.missingProtocols : []).map((protocol) => protocol?.name).filter(Boolean).join(', ')}</span></details>}
         </>
       )}
+      <AnalyticsCredit />
     </section>
   );
 }

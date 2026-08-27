@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { formatUSD } from '../lib/format';
 import { selectTopMarketShareSeries } from '../lib/marketShare';
 import { useMarketShareData } from '../hooks/useMarketShareData';
+import AnalyticsCredit from './AnalyticsCredit';
 
 const METRICS = [
   { id: 'volume', label: 'Volume', valueLabel: '24h volume' },
@@ -173,6 +174,7 @@ export default function MarketShareMap() {
       )}
 
       {!loading && !error && period !== 'current' && data?.sufficientHistory && <HistoricalShareChart values={data.values} metric={metric} />}
+      <AnalyticsCredit />
     </section>
   );
 }
