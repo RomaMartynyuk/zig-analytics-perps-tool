@@ -287,6 +287,11 @@ scatter points, while Volume Share and OI Share keep their own denominators of
 all active protocols reporting the corresponding metric. The response includes
 dynamic coverage, provenance, ranks, median Volume/OI, and Top-5 high/low
 turnover ratios. Missing values remain missing and never become zero.
+The same response powers the current **Volume Share vs OI Share** module:
+`shareGapPp = volumeShare - openInterestShare`, with dynamic positive and
+negative gap rankings. Shares are deliberately not renormalized to the scatter
+subset: protocols reporting only one metric still participate in that metric's
+full valid denominator.
 For rolling 24h volume, growth compares the average of the latest N daily
 observations with the previous N observations; it is not labelled as a period
 sum. `volume-oi` calculates denominators using only protocols with a valid

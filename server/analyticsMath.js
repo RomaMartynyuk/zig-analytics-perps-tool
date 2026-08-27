@@ -93,6 +93,9 @@ export function buildVolumeOiAnalysis(rows, { snapshotDate, capturedAt, totalPro
       volumeOiRatio: row.volume / row.openInterest,
       volumeShare: totalVolume > 0 ? (row.volume / totalVolume) * 100 : null,
       openInterestShare: totalOi > 0 ? (row.openInterest / totalOi) * 100 : null,
+      shareGapPp: totalVolume > 0 && totalOi > 0
+        ? (row.volume / totalVolume) * 100 - (row.openInterest / totalOi) * 100
+        : null,
       volumeRank: volumeRanks.get(row.slug) || null,
       openInterestRank: oiRanks.get(row.slug) || null,
       dataSource: row.data_source || null,
@@ -106,6 +109,12 @@ export function buildVolumeOiAnalysis(rows, { snapshotDate, capturedAt, totalPro
     .slice(0, 5).map((row, index) => ({ ...row, ratioRank: index + 1 }));
   const rankedLow = eligible.slice().sort((a, b) => a.volumeOiRatio - b.volumeOiRatio)
     .slice(0, 5).map((row, index) => ({ ...row, ratioRank: index + 1 }));
+  const largestPositiveGaps = eligible.filter((row) => row.shareGapPp > 0)
+    .sort((a, b) => b.shareGapPp - a.shareGapPp)
+    .slice(0, 5).map((row, index) => ({ ...row, gapRank: index + 1 }));
+  const largestNegativeGaps = eligible.filter((row) => row.shareGapPp < 0)
+    .sort((a, b) => a.shareGapPp - b.shareGapPp)
+    .slice(0, 5).map((row, index) => ({ ...row, gapRank: index + 1 }));
   const missingProtocols = normalized.filter((row) => !(row.volume != null && row.openInterest != null && row.volume > 0 && row.openInterest > 0))
     .map((row) => ({ slug: row.slug, name: row.name }));
 
@@ -117,12 +126,15 @@ export function buildVolumeOiAnalysis(rows, { snapshotDate, capturedAt, totalPro
       volumeAvailable: volumeRows.length,
       openInterestAvailable: oiRows.length,
       scatterEligible: eligible.length,
+      eligible: eligible.length,
       missing: Math.max(totalProtocols - eligible.length, 0),
     },
     medianRatio,
     protocols: eligible,
     highestRatios: rankedHigh,
     lowestRatios: rankedLow,
+    largestPositiveGaps,
+    largestNegativeGaps,
     missingProtocols,
   };
 }

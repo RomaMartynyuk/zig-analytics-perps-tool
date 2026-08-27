@@ -204,6 +204,13 @@ Vercel Cron.
   line, tooltip/selection, Top-3 highest/lowest Volume/OI та median. У scatter
   входять лише протоколи з позитивними Volume і OI, але Volume/OI share
   denominator окремо включає всі валідні значення відповідної метрики.
+  Четвертий модуль у широкій картці — **Volume Share vs OI Share**: scatter
+  (X = OI Share, Y = Volume Share) з однаковою процентною шкалою та
+  діагоналлю equality. `shareGapPp = volumeShare - openInterestShare` показує
+  neutral structural divergence; Top-3 рейтинги діляться на `Volume share >
+  OI share` та `OI share > Volume share`. Цей модуль використовує той самий
+  `/api/analytics/volume-oi`, без нового endpoint, і не renormalize-ить
+  visible точки — односторонні дані все одно залишаються в їх denominator.
 - **News-картка — порожній стан**, RSS/новини не підключені (Фаза 3
   оригінального плану).
 - **News/Calendar/Community/Settings** навмисно приховані з sidebar, доки

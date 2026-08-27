@@ -202,11 +202,15 @@ test('Volume/OI analysis uses all valid metric values for shares and only positi
   assert.equal(alpha.volumeOiRatio, 5);
   assert.equal(alpha.volumeShare, 100 / 220 * 100);
   assert.equal(alpha.openInterestShare, 10);
+  assert.equal(alpha.shareGapPp, 100 / 220 * 100 - 10);
   assert.equal(beta.volumeShare, 50 / 220 * 100);
   assert.equal(beta.openInterestShare, 50);
+  assert.equal(beta.shareGapPp, 50 / 220 * 100 - 50);
   assert.equal(analysis.medianRatio, 2.75);
   assert.equal(analysis.highestRatios[0].slug, 'alpha');
   assert.equal(analysis.lowestRatios[0].slug, 'beta');
+  assert.equal(analysis.largestPositiveGaps[0].slug, 'alpha');
+  assert.equal(analysis.largestNegativeGaps[0].slug, 'beta');
   assert.deepEqual(analysis.missingProtocols.map((protocol) => protocol.slug), ['volume-only', 'oi-only', 'zero-oi', 'invalid']);
 });
 
@@ -222,6 +226,32 @@ test('Volume/OI analysis automatically admits new valid protocols and isolates m
   assert.equal(analysis.coverage.openInterestAvailable, 3);
   assert.equal(analysis.highestRatios[0].slug, 'new-dex');
   assert.equal(analysis.protocols.reduce((sum, protocol) => sum + protocol.volumeShare, 0), 100);
+});
+
+test('share-gap scatter does not renormalize its paired subset and ranks both directions dynamically', () => {
+  const analysis = buildVolumeOiAnalysis([
+    { id: 1, slug: 'volume-heavy', name: 'Volume Heavy', volume_24h: 60, open_interest: 10 },
+    { id: 2, slug: 'oi-heavy', name: 'OI Heavy', volume_24h: 10, open_interest: 60 },
+    { id: 3, slug: 'volume-only', name: 'Volume Only', volume_24h: 30, open_interest: null },
+    { id: 4, slug: 'oi-only', name: 'OI Only', volume_24h: null, open_interest: 30 },
+    { id: 5, slug: 'broken', name: 'Broken', volume_24h: 'bad', open_interest: -1 },
+  ], { snapshotDate: '2026-08-27', totalProtocols: 5 });
+  const volumeHeavy = analysis.protocols.find((protocol) => protocol.slug === 'volume-heavy');
+  const oiHeavy = analysis.protocols.find((protocol) => protocol.slug === 'oi-heavy');
+  assert.equal(analysis.snapshotDate, '2026-08-27');
+  assert.equal(analysis.coverage.volumeAvailable, 3);
+  assert.equal(analysis.coverage.openInterestAvailable, 3);
+  assert.equal(analysis.coverage.scatterEligible, 2);
+  assert.equal(volumeHeavy.volumeShare, 60);
+  assert.equal(volumeHeavy.openInterestShare, 10);
+  assert.equal(volumeHeavy.shareGapPp, 50);
+  assert.equal(oiHeavy.volumeShare, 10);
+  assert.equal(oiHeavy.openInterestShare, 60);
+  assert.equal(oiHeavy.shareGapPp, -50);
+  assert.equal(analysis.protocols.reduce((sum, protocol) => sum + protocol.volumeShare, 0), 70);
+  assert.equal(analysis.protocols.reduce((sum, protocol) => sum + protocol.openInterestShare, 0), 70);
+  assert.equal(analysis.largestPositiveGaps[0].slug, 'volume-heavy');
+  assert.equal(analysis.largestNegativeGaps[0].slug, 'oi-heavy');
 });
 
 test('UTC snapshot identity is independent from a local timezone', () => {

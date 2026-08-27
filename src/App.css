@@ -1094,6 +1094,23 @@
 .volume-oi-missing { margin-top: 5px; }
 .volume-oi-loading { margin-top: 26px; }
 .volume-oi-empty { min-height: 275px; }
+.volume-oi-share-analysis {
+  grid-column: span 2;
+  grid-row: span 2;
+  min-height: 262px;
+  padding: 18px 20px;
+  overflow: hidden;
+}
+.volume-oi-share-chart { margin-top: 1px; }
+.volume-oi-share-chart svg { display: block; width: 100%; height: 190px; overflow: visible; }
+.volume-oi-share-selected { margin-top: -1px; }
+.volume-oi-gap-rankings {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  margin-top: 2px;
+}
+.volume-oi-gap-list.positive strong { color: var(--up); }
+.volume-oi-gap-list.negative strong { color: var(--down); }
+.volume-oi-share-empty { min-height: 210px; }
 .market-movers-meta {
   margin: 10px 0 7px;
   color: var(--ink-faint);
@@ -1425,6 +1442,12 @@
     min-height: 416px;
     padding: 16px;
   }
+  .volume-oi-share-analysis {
+    grid-column: 1 / -1;
+    grid-row: span 3;
+    min-height: 340px;
+    padding: 16px;
+  }
   .market-share-head { flex-direction: column; }
   .market-share-controls { width: 100%; }
   .market-share-control-group { justify-content: flex-start; flex-wrap: wrap; }
@@ -1435,6 +1458,7 @@
   .market-movers-grid { grid-template-columns: 1fr; gap: 13px; }
   .market-movers-loading { grid-template-columns: 1fr; }
   .volume-oi-chart svg { height: 190px; }
+  .volume-oi-share-chart svg { height: 185px; }
   .volume-oi-rankings { grid-template-columns: 1fr 1fr; gap: 10px; }
   .volume-oi-median { grid-column: 1 / -1; }
   .analytics-skeleton-tall {
