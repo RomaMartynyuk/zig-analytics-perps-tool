@@ -507,26 +507,26 @@ async function n1Data() { return { volume: null, openInterest: null }; }
 // ============================================================================
 
 const ADAPTERS = [
-  ['Hyperliquid', hyperliquidData],
-  ['Aster', asterData],
-  ['Pacifica', pacificaData],
-  ['Variational', variationalData],
-  ['Tread.fi', treadData],
-  ['StandX', standxData],
-  ['Nado', nadoData],
-  ['Hibachi', hibachiData],
-  ['edgeX', edgexData],
-  ['QFEX', qfexData],
-  ['Lighter', lighterData],
-  ['Reya', reyaData],
-  ['GRVT', grvtData],
-  ['Extended', extendedData],
-  ['Hotstuff', hotstuffData],
-  ['RISEx', risexData],
-  ['TrueNorth', trueNorthData],
-  ['Arcus', arcusData],
-  ['GMTrade', gmTradeData],
-  ['N1', n1Data],
+  { name: 'Hyperliquid', dataSource: 'hyperliquid_api', fetcher: hyperliquidData },
+  { name: 'Aster', dataSource: 'aster_api', fetcher: asterData },
+  { name: 'Pacifica', dataSource: 'pacifica_api', fetcher: pacificaData },
+  { name: 'Variational', dataSource: 'variational_api', fetcher: variationalData },
+  { name: 'Tread.fi', dataSource: 'tread_api', fetcher: treadData },
+  { name: 'StandX', dataSource: 'standx_api', fetcher: standxData },
+  { name: 'Nado', dataSource: 'nado_api', fetcher: nadoData },
+  { name: 'Hibachi', dataSource: 'hibachi_api', fetcher: hibachiData },
+  { name: 'edgeX', dataSource: 'edgex_api', fetcher: edgexData },
+  { name: 'QFEX', dataSource: 'qfex_api', fetcher: qfexData },
+  { name: 'Lighter', dataSource: 'lighter_api', fetcher: lighterData },
+  { name: 'Reya', dataSource: 'reya_api', fetcher: reyaData },
+  { name: 'GRVT', dataSource: 'grvt_api', fetcher: grvtData },
+  { name: 'Extended', dataSource: 'extended_api', fetcher: extendedData },
+  { name: 'Hotstuff', dataSource: 'hotstuff_api', fetcher: hotstuffData },
+  { name: 'RISEx', dataSource: 'risex_api', fetcher: risexData },
+  { name: 'TrueNorth', dataSource: 'truenorth_api', fetcher: trueNorthData },
+  { name: 'Arcus', dataSource: 'arcus_api', fetcher: arcusData },
+  { name: 'GMTrade', dataSource: 'gmtrade_api', fetcher: gmTradeData },
+  { name: 'N1', dataSource: 'n1_nord_api', fetcher: n1Data },
 ];
 
 const UNAVAILABLE_REASONS = {
@@ -548,21 +548,44 @@ const UNAVAILABLE_REASONS = {
 const sourceCache = {};
 let lastRefreshAt = 0;
 
+function validMetric(value) {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+/**
+ * Fetches each normalized protocol adapter once. The daily collector uses
+ * `{ fresh: true }` so a failed API call remains NULL for that UTC day rather
+ * than being replaced with this endpoint's best-effort in-memory stale cache.
+ */
+export async function getNormalizedDerivativesMetrics({ fresh = false } = {}) {
+  const results = await Promise.allSettled(ADAPTERS.map(({ fetcher }) => fetcher()));
+  return results.map((result, index) => {
+    const adapter = ADAPTERS[index];
+    const value = result.status === 'fulfilled' ? result.value : {};
+    return {
+      name: adapter.name,
+      dataSource: adapter.dataSource,
+      volume: validMetric(value?.volume),
+      openInterest: validMetric(value?.openInterest),
+      fresh,
+      error: result.status === 'rejected' ? String(result.reason?.message || result.reason) : null,
+    };
+  });
+}
+
 async function refreshAllSources() {
-  const results = await Promise.allSettled(ADAPTERS.map(([, fn]) => fn()));
+  const metrics = await getNormalizedDerivativesMetrics({ fresh: true });
 
-  results.forEach((r, i) => {
-    const [name] = ADAPTERS[i];
-    const value = r.status === 'fulfilled' ? r.value : { volume: null, openInterest: null };
-
-    const hasVolume = typeof value.volume === 'number';
-    const hasOI = typeof value.openInterest === 'number';
+  metrics.forEach((metric) => {
+    const { name } = metric;
+    const hasVolume = metric.volume != null;
+    const hasOI = metric.openInterest != null;
 
     if (!hasVolume && !hasOI) {
       // Total miss this cycle — leave sourceCache[name] exactly as it was
       // (stale-but-valid, or simply absent if it has never succeeded).
-      if (r.status === 'rejected') {
-        console.error(`[derivatives] ${name} threw:`, r.reason?.message || r.reason);
+      if (metric.error) {
+        console.error(`[derivatives] ${name} threw:`, metric.error);
       }
       return;
     }
@@ -572,8 +595,8 @@ async function refreshAllSources() {
       // Only overwrite each field if this cycle actually produced a
       // number for it — a source that gives volume but not OI this round
       // shouldn't blank out an OI value it successfully reported before.
-      volume: hasVolume ? value.volume : prev.volume ?? null,
-      openInterest: hasOI ? value.openInterest : prev.openInterest ?? null,
+      volume: hasVolume ? metric.volume : prev.volume ?? null,
+      openInterest: hasOI ? metric.openInterest : prev.openInterest ?? null,
       updatedAt: Date.now(),
     };
   });
@@ -592,17 +615,17 @@ async function getAggregate() {
   const volumeSources = [];
   const openInterestSources = [];
 
-  for (const [name] of ADAPTERS) {
+  for (const { name, dataSource } of ADAPTERS) {
     const entry = sourceCache[name];
     if (entry?.volume != null) {
       volumeTotal += entry.volume;
-      volumeSources.push({ name, ok: true, value: entry.volume });
+      volumeSources.push({ name, dataSource, ok: true, value: entry.volume });
     } else {
       volumeSources.push({ name, ok: false, reason: UNAVAILABLE_REASONS[name] });
     }
     if (entry?.openInterest != null) {
       oiTotal += entry.openInterest;
-      openInterestSources.push({ name, ok: true, value: entry.openInterest });
+      openInterestSources.push({ name, dataSource, ok: true, value: entry.openInterest });
     } else {
       openInterestSources.push({ name, ok: false, reason: UNAVAILABLE_REASONS[name] });
     }
@@ -641,7 +664,7 @@ export default async function handler(req, res) {
         volumeSources: agg.volumeSources,
         openInterestSources: agg.openInterestSources,
         cacheAgeMs: agg.cacheAgeMs,
-        note: '20 tracked exchanges are registered. Values are returned only when their public API and USD units have been verified; unavailable sources remain null instead of contributing guessed numbers. Refreshed at most once per 75 min per warm instance; a source that fails on a given cycle keeps its last successful value. 7d/30d volume needs historical snapshots, not implemented yet.',
+        note: '20 tracked exchanges are registered. Values are returned only when their public API and USD units have been verified; unavailable sources remain null instead of contributing guessed numbers. Refreshed at most once per 75 min per warm instance; a source that fails on a given cycle keeps its last successful value. Dashboard 7d/30d fields remain null; historical calculations are served separately from the daily-snapshot analytics layer.',
       },
     });
   } catch {

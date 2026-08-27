@@ -28,6 +28,7 @@
   },
   {
     "name": "Rise",
+    "metrics_key": "RISEx",
     "category": "Perps",
     "tier": 2,
     "defillama_slug": "risex",
@@ -64,6 +65,7 @@
   },
   {
     "name": "TradeHotStuff",
+    "metrics_key": "Hotstuff",
     "category": "Perps",
     "tier": 2,
     "defillama_slug": "hotstuff",
@@ -221,6 +223,7 @@
   },
   {
     "name": "Grvt",
+    "metrics_key": "GRVT",
     "category": "Perps (ZK privacy)",
     "tier": 3,
     "defillama_slug": "grvt",

@@ -99,9 +99,9 @@ Numbers are included only after the public API and USD units were verified.
 Volume and OI are tracked **independently per exchange** — a source can
 report one without the other.
 
-**7d/30d volume is always `null`.** No exchange exposes that as a single
-live call; it needs our own historical snapshots (Month 2 of the roadmap,
-not built yet).
+The Dashboard's legacy 7d/30d fields remain `null`; no exchange exposes those
+as one live call. Historical calculations now come from the separate daily
+snapshot API after enough real observations have accumulated.
 
 ### Caching (api/derivatives.js)
 Module-scope in-memory cache, ~75 min TTL. **Not a durable cross-instance
@@ -171,7 +171,7 @@ down to the following week.
 ```
 api/
   tvl.js               ← DeFiLlama TVL proxy (CORS workaround)
-  derivatives.js         ← Perp Volume + OI aggregation across 16 exchange adapters
+  derivatives.js         ← Perp Volume + OI aggregation across 20 exchange adapters
 
 src/
   data/
@@ -218,6 +218,65 @@ Vercel auto-deploys from the connected GitHub repo. Framework preset:
 `dist`). `/api/*.js` files are picked up automatically as Serverless
 Functions — no extra config needed.
 
+## Historical analytics (Neon PostgreSQL)
+
+Zig stores exactly one canonical snapshot per configured protocol per UTC day.
+The collector runs at **12:00 UTC** through Vercel Cron and uses the existing
+normalized direct-exchange adapters plus DefiLlama TVL. It never backfills or
+manufactures past values: history begins with the first successful Zig run.
+Unavailable metrics are stored as `NULL`, never `0`.
+
+### One-time setup
+
+1. Create a Neon Postgres project, then copy its pooled connection string from
+   **Neon Console → Connect**.
+2. In **Vercel → Project → Settings → Environment Variables**, add:
+   - `DATABASE_URL` — the Neon connection string, for Production and Preview.
+   - `CRON_SECRET` — a random secret of at least 16 characters, for Production.
+3. Pull the variables locally with `npx vercel env pull .env.local`, then run:
+
+   ```bash
+   npm run db:migrate
+   npm run snapshots:collect
+   ```
+
+   Alternatively, provide `DATABASE_URL` directly in your shell for either
+   command. Never commit `.env.local`.
+4. Deploy. [`vercel.json`](vercel.json) registers `GET /api/cron/daily-snapshots`
+   on `0 12 * * *`. Vercel sends `Authorization: Bearer $CRON_SECRET`
+   automatically; the route rejects every other caller.
+
+Verify the first row in Neon SQL Editor:
+
+```sql
+SELECT p.slug, p.name, s.snapshot_date, s.volume_24h, s.open_interest, s.tvl, s.data_source
+FROM protocol_daily_snapshots s
+JOIN protocols p ON p.id = s.protocol_id
+ORDER BY s.snapshot_date DESC, p.slug;
+```
+
+The snapshot table has a unique `(protocol_id, snapshot_date)` constraint, so
+Cron retries and repeated manual runs update the same UTC-day row.
+
+### Future Analytics Canvas API
+
+These read-only endpoints are ready for UI modules but do not change the
+current Analytics Canvas:
+
+- `/api/analytics/market-share?metric=volume&period=30d&protocols=hyperliquid,lighter`
+- `/api/analytics/movers?metric=open_interest&period=30d`
+- `/api/analytics/concentration?metric=volume&period=90d`
+- `/api/analytics/growth?metric=volume&period=7d`
+- `/api/analytics/volume-oi`
+
+Supported share metrics are `volume`, `open_interest`, and `tvl`. A 7D/30D/90D
+response exposes `sufficientHistory`, `availableDays`, and coverage. Until the
+required number of consecutive UTC-day observations exists, `values` is empty.
+For rolling 24h volume, growth compares the average of the latest N daily
+observations with the previous N observations; it is not labelled as a period
+sum. `volume-oi` calculates denominators using only protocols with a valid
+metric on that snapshot date.
+
 ## Next steps
 
 - Verify on the live deployment how many of the 16 registered exchanges
@@ -226,8 +285,9 @@ Functions — no extra config needed.
 - Revisit the stubbed/excluded exchanges if their public APIs mature
   (Hotstuff's docs weren't even indexed by search at time of writing; GRVT
   has no bulk ticker; QFEX's OI proxy is weak)
-- Month 2 of the roadmap: WoW volume comparison + Farming Difficulty
-  Index — needs a historical snapshot pipeline, not built yet
+- First Analytics Canvas chart — the historical snapshot pipeline and its
+  read-only APIs are ready; wait for enough real daily observations before
+  visualizing 7D/30D/90D results
 - Build out News, Analytics, Calendar, Settings sections
 - Consider unifying the name mismatches between `projects.json` and
   `api/derivatives.js`'s adapter registry (currently bridged by an alias

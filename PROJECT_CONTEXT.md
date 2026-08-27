@@ -79,6 +79,31 @@ public/
 
 ## Ключові архітектурні рішення (і чому саме так)
 
+### Historical analytics — Neon PostgreSQL + Vercel Cron
+
+- `migrations/001_historical_analytics.sql` створює `protocols` і
+  `protocol_daily_snapshots`. Ключ `(protocol_id, snapshot_date)` унікальний,
+  тому collection idempotent: повторний запуск за один UTC-день оновлює, а не
+  дублює рядок.
+- `api/lib/snapshotCollector.js` використовує вже наявні нормалізовані
+  adapters з `api/derivatives.js` (`fresh: true`, без stale in-memory cache
+  для snapshot) і один bounded-concurrency DefiLlama TVL fetch на проект.
+  `projects.json` лишається єдиним registry; `metrics_key` є лише для Rise /
+  TradeHotStuff / Grvt, де display name відрізняється від adapter name.
+- `NULL` означає unavailable/invalid metric; `0` — лише реальне нульове
+  вимірювання. Collector не підміняє failure нулем і продовжує роботу, якщо
+  окремий протокол/TVL/API падає.
+- `vercel.json`: `GET /api/cron/daily-snapshots` щодня о `12:00 UTC`; endpoint
+  захищений `Authorization: Bearer $CRON_SECRET`. Потрібні Vercel env:
+  `DATABASE_URL`, `CRON_SECRET`. Ручний перший snapshot: після `npm run
+  db:migrate` виконати `npm run snapshots:collect` з доступним `DATABASE_URL`.
+- `api/lib/analyticsService.js` надає raw-data queries для market share,
+  movers, concentration, growth і volume/OI. Не зберігати derived metrics.
+  Endpoints у `api/analytics/*` повертають coverage і `sufficientHistory`;
+  якщо немає необхідної кількості послідовних UTC-day observations, `values`
+  пустий. Для volume growth: average rolling-24h volume latest N days проти
+  previous N days, а не неправильно названий "30D Volume".
+
 ### 1. DeFiLlama Derivatives (volume/OI) — Pro-only, НЕ використовується
 `/overview/derivatives` повертає HTTP 402 без paid plan. Спроба server-side
 парсингу публічної `/perps` сторінки повертає HTTP 403, тож це не стабільний
@@ -103,9 +128,10 @@ fallback для Vercel і не доданий у production. TVL (`/protocol/{sl
 **Volume та OI тепер НЕЗАЛЕЖНІ по кожній біржі** — біржа може дати volume,
 але не OI (як-от Aster), і навпаки. Обидва рахуються й агрегуються окремо.
 
-**7d/30d volume:** завжди `null` — жодна біржа не дає це одним викликом,
-потрібна власна історія снепшотів (це "Місяць 2" з road map, ще не
-реалізовано).
+**7d/30d volume на Dashboard:** legacy-поля досі `null` — жодна біржа не дає
+це одним live-викликом. Історична база вже реалізована окремим daily snapshot
+layer; після достатньої кількості реальних днів її можна підключати до першого
+графіка Analytics Canvas.
 
 ### 3. Кешування в /api/derivatives.js
 Module-scope in-memory кеш, TTL 75 хв (середина запитаних 60-90).
