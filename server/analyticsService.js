@@ -22,13 +22,13 @@ async function getActiveProtocolCount(sql) {
   return Number(rows[0]?.count || 0);
 }
 
-async function getMetricRows(sql, metric) {
+async function getMetricRows(sql, metric, { activeOnly = false } = {}) {
   const column = getMetricColumn(metric);
   return sql.query(`
     SELECT s.snapshot_date, p.slug, p.name, s.${column} AS metric_value, s.data_source
     FROM protocol_daily_snapshots s
     JOIN protocols p ON p.id = s.protocol_id
-    WHERE s.${column} IS NOT NULL
+    WHERE s.${column} IS NOT NULL${activeOnly ? ' AND p.is_active = TRUE' : ''}
     ORDER BY s.snapshot_date ASC, p.slug ASC
   `);
 }
@@ -69,7 +69,11 @@ export async function getMarketShareHistory({ metric, period, protocols } = {}, 
 }
 
 export async function getMarketShareMovers({ metric, period } = {}, sql = getSql()) {
-  const history = await getMarketShareHistory({ metric, period }, sql);
+  const [rows, totalProtocols] = await Promise.all([
+    getMetricRows(sql, metric, { activeOnly: true }),
+    getActiveProtocolCount(sql),
+  ]);
+  const history = { metric, ...buildMarketShareHistory(rows, { period, totalProtocols }) };
   return { metric, ...buildMarketShareMovers(history) };
 }
 

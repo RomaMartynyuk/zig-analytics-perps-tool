@@ -192,7 +192,11 @@ Vercel Cron.
   — **Market Share Map**: Current volume/OI rank bars із coverage, missing
   protocols і provenance tooltip; 7D/30D/90D використовують `/api/analytics/
   market-share` та показують progress state, доки `sufficientHistory` не стане
-  true. Інші canvas-картки залишаються пустими.
+  true. Другий модуль у широкій картці під ним — **Market Share Movers**:
+  Top-5 gainers/losers за percentage-point зміною share з UTC start/end dates,
+  coverage eligible/current і raw-value tooltip. Для movement протокол мусить
+  мати валідне значення на обох comparison dates; `NULL` не перетворюється на
+  0. Інші canvas-картки залишаються пустими.
   Top-N та color selection обчислюються динамічно за stable slug, coverage і
   missing list приходять із API; немає прив'язки до 20 поточних проєктів.
 - **News-картка — порожній стан**, RSS/новини не підключені (Фаза 3

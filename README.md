@@ -276,6 +276,11 @@ required number of consecutive UTC-day observations exists, `values` is empty.
 The `current` period always uses only the latest canonical `snapshot_date`; it
 returns its captured time, ranked values, coverage, provenance, and the dynamic
 list of protocols missing the selected metric.
+`/api/analytics/movers` returns canonical UTC `startDate`/`endDate`, separate
+Top-5 `gainers` and `losers`, plus `coverage.currentAvailable`,
+`coverage.eligible`, and `coverage.comparisonUnavailable`. A protocol must
+have a valid selected metric at both comparison dates to be ranked; movement is
+reported in percentage points, never percent growth.
 For rolling 24h volume, growth compares the average of the latest N daily
 observations with the previous N observations; it is not labelled as a period
 sum. `volume-oi` calculates denominators using only protocols with a valid

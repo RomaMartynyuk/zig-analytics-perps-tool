@@ -1031,6 +1031,113 @@
 }
 .market-share-legend span { display: inline-flex; align-items: center; gap: 4px; }
 .market-share-legend i { width: 7px; height: 7px; border-radius: 50%; }
+.market-share-movers {
+  grid-column: span 2;
+  grid-row: span 1;
+  min-height: 176px;
+  padding: 18px 20px;
+}
+.market-movers-meta {
+  margin: 10px 0 7px;
+  color: var(--ink-faint);
+  font-size: 9px;
+  font-weight: 600;
+}
+.market-movers-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.market-movers-list {
+  min-width: 0;
+}
+.market-movers-list h3 {
+  margin-bottom: 6px;
+  color: var(--ink-soft);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.market-mover-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 20px minmax(62px, 1fr) minmax(30px, .75fr) 41px;
+  align-items: center;
+  gap: 5px;
+  min-height: 27px;
+  outline: none;
+}
+.market-mover-rank {
+  color: var(--ink-faint);
+  font-size: 9px;
+  font-weight: 700;
+}
+.market-mover-main { min-width: 0; }
+.market-mover-main strong,
+.market-mover-main span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.market-mover-main strong { color: var(--ink); font-size: 10px; }
+.market-mover-main span { margin-top: 1px; color: var(--ink-faint); font-size: 8.5px; font-weight: 600; }
+.market-mover-bar {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--card-tint);
+}
+.market-mover-bar i { display: block; height: 100%; border-radius: inherit; }
+.market-movers-list.gainers .market-mover-bar i { background: var(--up); }
+.market-movers-list.losers .market-mover-bar i { background: var(--down); }
+.market-mover-change { font-size: 10px; text-align: right; }
+.market-movers-list.gainers .market-mover-change { color: var(--up); }
+.market-movers-list.losers .market-mover-change { color: var(--down); }
+.market-mover-tooltip {
+  position: absolute;
+  z-index: 5;
+  right: 0;
+  bottom: calc(100% + 5px);
+  display: grid;
+  width: max-content;
+  max-width: 265px;
+  gap: 2px;
+  padding: 8px 9px;
+  border-radius: 8px;
+  background: var(--sidebar);
+  box-shadow: var(--shadow-card);
+  color: rgba(254, 252, 248, .8);
+  font-size: 9px;
+  line-height: 1.3;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(3px);
+  transition: opacity .15s ease, transform .15s ease;
+}
+.market-mover-tooltip strong { color: var(--sidebar-ink); }
+.market-mover-row:hover .market-mover-tooltip,
+.market-mover-row:focus .market-mover-tooltip { opacity: 1; transform: translateY(0); }
+.market-movers-none {
+  color: var(--ink-faint);
+  font-size: 9px;
+  font-weight: 500;
+}
+.market-movers-loading {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px 22px;
+  margin-top: 20px;
+}
+.market-movers-loading i {
+  height: 23px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--card-tint), rgba(235, 229, 216, .45), var(--card-tint));
+  background-size: 180% 100%;
+  animation: market-share-shimmer 1.2s ease-in-out infinite;
+}
+.market-movers-empty { min-height: 105px; }
 .funding-heading {
   display: flex;
   align-items: flex-start;
@@ -1250,6 +1357,11 @@
     grid-row: span 3;
     padding: 16px;
   }
+  .market-share-movers {
+    grid-column: 1 / -1;
+    grid-row: span 3;
+    padding: 16px;
+  }
   .market-share-head { flex-direction: column; }
   .market-share-controls { width: 100%; }
   .market-share-control-group { justify-content: flex-start; flex-wrap: wrap; }
@@ -1257,6 +1369,8 @@
   .market-share-name,
   .market-share-percent { font-size: 9px; }
   .market-share-history svg { height: 165px; }
+  .market-movers-grid { grid-template-columns: 1fr; gap: 13px; }
+  .market-movers-loading { grid-template-columns: 1fr; }
   .analytics-skeleton-tall {
     grid-row: span 2;
   }

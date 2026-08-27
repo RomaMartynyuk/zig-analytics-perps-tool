@@ -77,6 +77,10 @@ export function buildMarketShareHistory(rows, { period, totalProtocols, protocol
   const dates = continuousRecentDates(rows, requiredDays);
   const sufficientHistory = dates.length === requiredDays;
   const allowedProtocols = protocols?.length ? new Set(protocols) : null;
+  const latestDate = dates.at(-1) || null;
+  const latestAvailable = latestDate
+    ? rows.filter((row) => dateKey(row.snapshot_date) === latestDate && toValidNumber(row.metric_value) != null).length
+    : 0;
 
   if (!sufficientHistory) {
     return {
@@ -84,7 +88,9 @@ export function buildMarketShareHistory(rows, { period, totalProtocols, protocol
       requiredDays,
       availableDays: dates.length,
       sufficientHistory: false,
-      coverage: coverage(totalProtocols, 0),
+      startDate: dates[0] || null,
+      endDate: latestDate,
+      coverage: coverage(totalProtocols, latestAvailable),
       values: [],
     };
   }
@@ -112,12 +118,27 @@ export function buildMarketShareHistory(rows, { period, totalProtocols, protocol
     }
   }
 
-  return { requestedPeriod: period, requiredDays, availableDays: dates.length, sufficientHistory: true, coverage: latestCoverage, values };
+  return {
+    requestedPeriod: period,
+    requiredDays,
+    availableDays: dates.length,
+    sufficientHistory: true,
+    startDate: dates[0],
+    endDate: latestDate,
+    coverage: latestCoverage,
+    values,
+  };
 }
 
 export function buildMarketShareMovers(history) {
   if (!history.sufficientHistory) {
-    return { ...history, values: [] };
+    return {
+      ...history,
+      coverage: { ...history.coverage, currentAvailable: history.coverage.available, eligible: 0 },
+      gainers: [],
+      losers: [],
+      values: [],
+    };
   }
 
   const byProtocol = new Map();
@@ -127,22 +148,42 @@ export function buildMarketShareMovers(history) {
     points.push(value);
     byProtocol.set(key, points);
   }
-  const values = [...byProtocol.values()]
-    .filter((points) => points.length === history.requiredDays)
-    .map((points) => {
-      const start = points[0];
-      const current = points.at(-1);
-      return {
-        protocol: current.protocol,
-        startingShare: start.share,
-        currentShare: current.share,
-        percentagePointChange: current.share - start.share,
-      };
-    })
-    .sort((a, b) => b.currentShare - a.currentShare)
+  const values = [...byProtocol.values()].map((points) => {
+    const start = points.find((point) => point.date === history.startDate);
+    const current = points.find((point) => point.date === history.endDate);
+    if (!start || !current) return null;
+    return {
+      protocol: current.protocol,
+      startingShare: start.share,
+      currentShare: current.share,
+      percentagePointChange: current.share - start.share,
+      startValue: start.value,
+      currentValue: current.value,
+      startDataSource: start.dataSource || null,
+      currentDataSource: current.dataSource || null,
+    };
+  }).filter(Boolean);
+  const gainers = values.filter((value) => value.percentagePointChange > 0)
+    .sort((a, b) => b.percentagePointChange - a.percentagePointChange)
+    .slice(0, 5)
+    .map((value, index) => ({ ...value, rank: index + 1 }));
+  const losers = values.filter((value) => value.percentagePointChange < 0)
+    .sort((a, b) => a.percentagePointChange - b.percentagePointChange)
+    .slice(0, 5)
     .map((value, index) => ({ ...value, rank: index + 1 }));
 
-  return { ...history, values };
+  return {
+    ...history,
+    coverage: {
+      ...history.coverage,
+      currentAvailable: history.coverage.available,
+      eligible: values.length,
+      comparisonUnavailable: Math.max(history.coverage.available - values.length, 0),
+    },
+    gainers,
+    losers,
+    values,
+  };
 }
 
 export function buildMarketConcentrationHistory(rows, { period, totalProtocols }) {

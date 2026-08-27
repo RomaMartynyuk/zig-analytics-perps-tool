@@ -1,4 +1,5 @@
 import MarketShareMap from './MarketShareMap';
+import MarketShareMovers from './MarketShareMovers';
 
 export default function AnalyticsPage() {
   return (
@@ -15,7 +16,7 @@ export default function AnalyticsPage() {
         <MarketShareMap />
         <div className="card analytics-skeleton analytics-skeleton-tall" aria-hidden="true" />
         <div className="card analytics-skeleton analytics-skeleton-small" aria-hidden="true" />
-        <div className="card analytics-skeleton analytics-skeleton-medium" aria-hidden="true" />
+        <MarketShareMovers />
         <div className="card analytics-skeleton analytics-skeleton-small" aria-hidden="true" />
       </div>
     </section>

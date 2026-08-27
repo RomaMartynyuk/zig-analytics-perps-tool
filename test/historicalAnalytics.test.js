@@ -118,21 +118,49 @@ test('a 30-plus protocol universe preserves dynamic coverage and response shape'
   assert.equal(current.values.reduce((sum, value) => sum + value.share, 0).toFixed(6), '100.000000');
 });
 
-test('market-share movers return percentage-point changes and ranks', () => {
+test('market-share movers return positive and negative percentage-point changes with ranked sections', () => {
   const history = buildMarketShareHistory(rowsForDays(7, 25, 40), { period: '7d', totalProtocols: 2 });
   const movers = buildMarketShareMovers(history);
-  const alpha = movers.values.find((value) => value.protocol.slug === 'alpha');
+  const alpha = movers.gainers.find((value) => value.protocol.slug === 'alpha');
+  const beta = movers.losers.find((value) => value.protocol.slug === 'beta');
   assert.equal(alpha.startingShare, 25);
   assert.equal(alpha.currentShare, 40);
   assert.equal(alpha.percentagePointChange, 15);
-  assert.equal(alpha.rank, 2);
+  assert.equal(alpha.rank, 1);
+  assert.equal(beta.percentagePointChange, -15);
+  assert.equal(beta.rank, 1);
+  assert.equal(movers.coverage.currentAvailable, 2);
+  assert.equal(movers.coverage.eligible, 2);
+});
+
+test('movers exclude protocols missing either the start or current comparison point', () => {
+  const rows = rowsForDays(7, 50, 60)
+    .filter((row) => !(row.slug === 'alpha' && row.snapshot_date === '2026-01-01'));
+  const movers = buildMarketShareMovers(buildMarketShareHistory(rows, { period: '7d', totalProtocols: 2 }));
+  assert.equal(movers.values.some((value) => value.protocol.slug === 'alpha'), false);
+  assert.equal(movers.coverage.eligible, 1);
+  assert.equal(movers.coverage.comparisonUnavailable, 1);
+});
+
+test('one malformed historical protocol record does not break the movers result', () => {
+  const rows = [
+    ...rowsForDays(7, 40, 50),
+    { snapshot_date: '2026-01-01', slug: 'broken', name: 'Broken', metric_value: 'invalid' },
+    { snapshot_date: '2026-01-07', slug: 'broken', name: 'Broken', metric_value: null },
+  ];
+  const movers = buildMarketShareMovers(buildMarketShareHistory(rows, { period: '7d', totalProtocols: 3 }));
+  assert.equal(movers.gainers[0].protocol.slug, 'alpha');
+  assert.equal(movers.values.some((value) => value.protocol.slug === 'broken'), false);
 });
 
 test('insufficient history never masquerades as a full 7D series', () => {
   const history = buildMarketShareHistory(rowsForDays(5), { period: '7d', totalProtocols: 2 });
+  const movers = buildMarketShareMovers(history);
   assert.equal(history.sufficientHistory, false);
   assert.equal(history.availableDays, 5);
   assert.deepEqual(history.values, []);
+  assert.deepEqual(movers.gainers, []);
+  assert.deepEqual(movers.losers, []);
 });
 
 test('30D and 90D history stay empty until all required daily snapshots exist', () => {
