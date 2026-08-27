@@ -91,7 +91,7 @@ function CurrentShareBars({ values, metric }) {
         <div className="market-share-row" key={item.protocol.slug}>
           <span className="market-share-rank">#{item.rank}</span>
           <span className="market-share-name">{item.protocol.name}</span>
-          <div className="market-share-bar-track">
+          <div className={`market-share-bar-track ${item.rank <= 3 ? 'tooltip-below' : ''}`}>
             <div className="market-share-bar-fill" style={{ width: `${item.share}%` }} />
             <span className="market-share-tooltip" role="tooltip">
               <strong>{item.protocol.name}</strong>
