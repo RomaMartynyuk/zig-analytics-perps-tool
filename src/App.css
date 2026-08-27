@@ -817,6 +817,220 @@
 .analytics-skeleton-tall { grid-row: span 3; }
 .analytics-skeleton-small { grid-row: span 1; }
 .analytics-skeleton-medium { grid-column: span 2; grid-row: span 1; }
+.market-share-map {
+  grid-column: span 2;
+  grid-row: span 2;
+  min-height: 262px;
+  padding: 18px 20px;
+  overflow: hidden;
+}
+.market-share-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.analytics-module-kicker {
+  display: block;
+  color: var(--accent-2);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.market-share-head h2 {
+  margin-top: 4px;
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.2;
+}
+.market-share-head p {
+  margin-top: 5px;
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 600;
+}
+.market-share-head p span {
+  color: var(--ink-faint);
+  font-weight: 500;
+}
+.market-share-controls {
+  display: grid;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.market-share-control-group {
+  display: flex;
+  justify-content: flex-end;
+  gap: 3px;
+}
+.market-share-control-group button {
+  border: 0;
+  border-radius: 999px;
+  padding: 4px 7px;
+  background: var(--card-tint);
+  color: var(--ink-faint);
+  cursor: pointer;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.2;
+  transition: background .15s ease, color .15s ease;
+}
+.market-share-control-group button.is-active {
+  background: var(--sidebar);
+  color: var(--sidebar-ink);
+}
+.market-share-current { margin-top: 13px; }
+.market-share-meta {
+  margin-bottom: 8px;
+  color: var(--ink-faint);
+  font-size: 9px;
+  font-weight: 600;
+}
+.market-share-bars {
+  display: grid;
+  gap: 5px;
+  max-height: 178px;
+  overflow: auto;
+  padding-right: 4px;
+}
+.market-share-row {
+  display: grid;
+  grid-template-columns: 22px minmax(72px, 104px) minmax(48px, 1fr) 39px;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.market-share-rank {
+  color: var(--ink-faint);
+  font-size: 9px;
+  font-weight: 700;
+}
+.market-share-name {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.market-share-bar-track {
+  position: relative;
+  height: 10px;
+  overflow: visible;
+  border-radius: 999px;
+  background: var(--card-tint);
+}
+.market-share-bar-fill {
+  height: 100%;
+  min-width: 3px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent-2), var(--up));
+}
+.market-share-percent {
+  color: var(--ink);
+  font-size: 10px;
+  text-align: right;
+}
+.market-share-tooltip {
+  position: absolute;
+  z-index: 4;
+  right: 0;
+  bottom: calc(100% + 6px);
+  display: grid;
+  width: max-content;
+  max-width: 220px;
+  gap: 2px;
+  padding: 8px 9px;
+  border-radius: 8px;
+  background: var(--sidebar);
+  box-shadow: var(--shadow-card);
+  color: rgba(254, 252, 248, .8);
+  font-size: 9px;
+  line-height: 1.3;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(3px);
+  transition: opacity .15s ease, transform .15s ease;
+}
+.market-share-tooltip strong { color: var(--sidebar-ink); }
+.market-share-bar-track:hover .market-share-tooltip,
+.market-share-bar-track:focus-within .market-share-tooltip { opacity: 1; transform: translateY(0); }
+.market-share-missing {
+  margin-top: 9px;
+  color: var(--ink-faint);
+  font-size: 9px;
+  font-weight: 600;
+}
+.market-share-missing summary { cursor: pointer; }
+.market-share-missing span {
+  display: block;
+  margin-top: 4px;
+  color: var(--ink-soft);
+  font-weight: 500;
+  line-height: 1.35;
+}
+.market-share-loading {
+  display: grid;
+  gap: 8px;
+  margin-top: 22px;
+}
+.market-share-loading i {
+  display: block;
+  height: 12px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--card-tint), rgba(235, 229, 216, .45), var(--card-tint));
+  background-size: 180% 100%;
+  animation: market-share-shimmer 1.2s ease-in-out infinite;
+}
+.market-share-loading i:nth-child(1) { width: 92%; }
+.market-share-loading i:nth-child(2) { width: 78%; }
+.market-share-loading i:nth-child(3) { width: 65%; }
+.market-share-loading i:nth-child(4) { width: 48%; }
+.market-share-loading i:nth-child(5) { width: 35%; }
+@keyframes market-share-shimmer { to { background-position: -180% 0; } }
+.market-share-empty {
+  display: grid;
+  place-content: center;
+  min-height: 170px;
+  gap: 7px;
+  color: var(--ink-faint);
+  font-size: 11px;
+  text-align: center;
+}
+.market-share-empty strong { color: var(--ink-soft); font-size: 13px; }
+.market-share-empty button {
+  justify-self: center;
+  margin-top: 3px;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 11px;
+  background: var(--sidebar);
+  color: var(--sidebar-ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+}
+.market-share-history-empty { min-height: 185px; }
+.market-share-history {
+  margin-top: 14px;
+}
+.market-share-history svg { display: block; width: 100%; height: 185px; overflow: visible; }
+.market-share-gridline { stroke: var(--line); stroke-width: 1; }
+.market-share-axis { fill: var(--ink-faint); font-size: 8px; font-weight: 600; }
+.market-share-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin: 2px 0 0 38px;
+  color: var(--ink-soft);
+  font-size: 9px;
+  font-weight: 600;
+}
+.market-share-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.market-share-legend i { width: 7px; height: 7px; border-radius: 50%; }
 .funding-heading {
   display: flex;
   align-items: flex-start;
@@ -1031,6 +1245,18 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-auto-rows: 104px;
   }
+  .market-share-map {
+    grid-column: 1 / -1;
+    grid-row: span 3;
+    padding: 16px;
+  }
+  .market-share-head { flex-direction: column; }
+  .market-share-controls { width: 100%; }
+  .market-share-control-group { justify-content: flex-start; flex-wrap: wrap; }
+  .market-share-row { grid-template-columns: 20px minmax(65px, 82px) minmax(38px, 1fr) 36px; gap: 5px; }
+  .market-share-name,
+  .market-share-percent { font-size: 9px; }
+  .market-share-history svg { height: 165px; }
   .analytics-skeleton-tall {
     grid-row: span 2;
   }

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  buildCurrentMarketShare,
   buildMarketShareHistory,
   buildMarketShareMovers,
   toValidNumber,
@@ -47,6 +48,27 @@ test('market shares use only valid available values and preserve OI coverage', (
   assert.equal(oi.values.at(-2).share, 20);
 });
 
+test('current market share excludes NULL protocols and returns coverage, names, rank and snapshot date', () => {
+  const current = buildCurrentMarketShare([
+    { slug: 'alpha', name: 'Alpha', metric_value: 75, data_source: 'alpha_api' },
+    { slug: 'beta', name: 'Beta', metric_value: 25, data_source: 'beta_api' },
+    { slug: 'missing', name: 'Missing', metric_value: null, data_source: null },
+  ], {
+    metric: 'volume',
+    snapshotDate: '2026-08-27',
+    capturedAt: '2026-08-27T12:00:00.000Z',
+    totalProtocols: 3,
+  });
+  assert.equal(current.snapshotDate, '2026-08-27');
+  assert.equal(current.coverage.available, 2);
+  assert.equal(current.coverage.total, 3);
+  assert.equal(current.coverage.missing, 1);
+  assert.equal(current.values[0].protocol.name, 'Alpha');
+  assert.equal(current.values[0].rank, 1);
+  assert.equal(current.values[0].share + current.values[1].share, 100);
+  assert.deepEqual(current.missingProtocols, [{ slug: 'missing', name: 'Missing' }]);
+});
+
 test('market-share movers return percentage-point changes and ranks', () => {
   const history = buildMarketShareHistory(rowsForDays(7, 25, 40), { period: '7d', totalProtocols: 2 });
   const movers = buildMarketShareMovers(history);
@@ -62,6 +84,18 @@ test('insufficient history never masquerades as a full 7D series', () => {
   assert.equal(history.sufficientHistory, false);
   assert.equal(history.availableDays, 5);
   assert.deepEqual(history.values, []);
+});
+
+test('30D and 90D history stay empty until all required daily snapshots exist', () => {
+  const rows = rowsForDays(29);
+  const thirtyDays = buildMarketShareHistory(rows, { period: '30d', totalProtocols: 2 });
+  const ninetyDays = buildMarketShareHistory(rows, { period: '90d', totalProtocols: 2 });
+  assert.equal(thirtyDays.sufficientHistory, false);
+  assert.equal(thirtyDays.availableDays, 29);
+  assert.deepEqual(thirtyDays.values, []);
+  assert.equal(ninetyDays.sufficientHistory, false);
+  assert.equal(ninetyDays.availableDays, 29);
+  assert.deepEqual(ninetyDays.values, []);
 });
 
 test('invalid and missing metrics stay NULL rather than becoming zero', () => {

@@ -31,6 +31,46 @@ function continuousRecentDates(rows, requiredDays) {
   return selected;
 }
 
+function coverage(totalProtocols, available) {
+  return {
+    available,
+    total: totalProtocols,
+    missing: Math.max(totalProtocols - available, 0),
+    // Keep these aliases while existing server callers migrate to the clearer shape.
+    totalProtocols,
+    validProtocols: available,
+  };
+}
+
+export function buildCurrentMarketShare(rows, { metric, snapshotDate, capturedAt, totalProtocols }) {
+  const validRows = rows
+    .map((row) => ({ ...row, metric_value: toValidNumber(row.metric_value) }))
+    .filter((row) => row.metric_value != null);
+  const total = validRows.reduce((sum, row) => sum + row.metric_value, 0);
+  const values = validRows
+    .sort((a, b) => b.metric_value - a.metric_value)
+    .map((row, index) => ({
+      rank: index + 1,
+      protocol: { slug: row.slug, name: row.name },
+      value: row.metric_value,
+      share: total > 0 ? (row.metric_value / total) * 100 : null,
+      dataSource: row.data_source || null,
+    }));
+  const missingProtocols = rows
+    .filter((row) => toValidNumber(row.metric_value) == null)
+    .map((row) => ({ slug: row.slug, name: row.name }));
+
+  return {
+    metric,
+    requestedPeriod: 'current',
+    snapshotDate: snapshotDate || null,
+    capturedAt: capturedAt || null,
+    coverage: coverage(totalProtocols, validRows.length),
+    missingProtocols,
+    values,
+  };
+}
+
 export function buildMarketShareHistory(rows, { period, totalProtocols, protocols } = {}) {
   const requiredDays = PERIOD_DAYS[period];
   if (!requiredDays) throw new Error('Unsupported period');
@@ -44,20 +84,20 @@ export function buildMarketShareHistory(rows, { period, totalProtocols, protocol
       requiredDays,
       availableDays: dates.length,
       sufficientHistory: false,
-      coverage: { totalProtocols, validProtocols: 0 },
+      coverage: coverage(totalProtocols, 0),
       values: [],
     };
   }
 
   const values = [];
-  let latestCoverage = { totalProtocols, validProtocols: 0 };
+  let latestCoverage = coverage(totalProtocols, 0);
   for (const date of dates) {
     const dayRows = rows.filter((row) => dateKey(row.snapshot_date) === date)
       .map((row) => ({ ...row, metric_value: toValidNumber(row.metric_value) }))
       .filter((row) => row.metric_value != null);
     const total = dayRows.reduce((sum, row) => sum + row.metric_value, 0);
-    const coverage = { totalProtocols, validProtocols: dayRows.length };
-    if (date === dates.at(-1)) latestCoverage = coverage;
+    const dailyCoverage = coverage(totalProtocols, dayRows.length);
+    if (date === dates.at(-1)) latestCoverage = dailyCoverage;
 
     for (const row of dayRows) {
       if (allowedProtocols && !allowedProtocols.has(row.slug)) continue;
@@ -66,7 +106,8 @@ export function buildMarketShareHistory(rows, { period, totalProtocols, protocol
         protocol: { slug: row.slug, name: row.name },
         value: row.metric_value,
         share: total > 0 ? (row.metric_value / total) * 100 : null,
-        coverage,
+        dataSource: row.data_source || null,
+        coverage: dailyCoverage,
       });
     }
   }
@@ -116,7 +157,7 @@ export function buildMarketConcentrationHistory(rows, { period, totalProtocols }
       top1Share: ranked.slice(0, 1).reduce((sum, value) => sum + value.share, 0),
       top3Share: ranked.slice(0, 3).reduce((sum, value) => sum + value.share, 0),
       top5Share: ranked.slice(0, 5).reduce((sum, value) => sum + value.share, 0),
-      coverage: ranked[0]?.coverage || { totalProtocols, validProtocols: 0 },
+      coverage: ranked[0]?.coverage || coverage(totalProtocols, 0),
     };
   });
 

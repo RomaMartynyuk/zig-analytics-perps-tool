@@ -1,6 +1,7 @@
 import { getSql } from './db.js';
 import {
   PERIOD_DAYS,
+  buildCurrentMarketShare,
   buildGrowthMetrics,
   buildMarketConcentrationHistory,
   buildMarketShareHistory,
@@ -30,6 +31,31 @@ async function getMetricRows(sql, metric) {
     WHERE p.is_active = TRUE AND s.${column} IS NOT NULL
     ORDER BY s.snapshot_date ASC, p.slug ASC
   `);
+}
+
+export async function getCurrentMarketShare({ metric } = {}, sql = getSql()) {
+  const column = getMetricColumn(metric);
+  const [latestRows, totalProtocols] = await Promise.all([
+    sql`SELECT MAX(snapshot_date) AS snapshot_date, MAX(captured_at) AS captured_at FROM protocol_daily_snapshots`,
+    getActiveProtocolCount(sql),
+  ]);
+  const snapshotDate = latestRows[0]?.snapshot_date || null;
+  const capturedAt = latestRows[0]?.captured_at || null;
+  const rows = await sql.query(`
+    SELECT p.slug, p.name, s.${column} AS metric_value, s.data_source
+    FROM protocols p
+    LEFT JOIN protocol_daily_snapshots s
+      ON s.protocol_id = p.id AND s.snapshot_date = $1::date
+    WHERE p.is_active = TRUE
+    ORDER BY p.slug ASC
+  `, [snapshotDate]);
+
+  return buildCurrentMarketShare(rows, { metric, snapshotDate, capturedAt, totalProtocols });
+}
+
+export async function getMarketShare({ metric, period, protocols } = {}, sql = getSql()) {
+  if (period === 'current') return getCurrentMarketShare({ metric }, sql);
+  return getMarketShareHistory({ metric, period, protocols }, sql);
 }
 
 export async function getMarketShareHistory({ metric, period, protocols } = {}, sql = getSql()) {

@@ -185,7 +185,11 @@ Vercel Cron.
   `prediction_defaults.user_allocation_percent`.
   Це стартові значення конкретної картки, а не глобальні UI-налаштування.
 - **Analytics** — порожній canvas з картками різних розмірів для майбутніх
-  дослідницьких модулів.
+  дослідницьких модулів. Перший реальний модуль у великій верхній лівій картці
+  — **Market Share Map**: Current volume/OI rank bars із coverage, missing
+  protocols і provenance tooltip; 7D/30D/90D використовують `/api/analytics/
+  market-share` та показують progress state, доки `sufficientHistory` не стане
+  true. Інші canvas-картки залишаються пустими.
 - **News-картка — порожній стан**, RSS/новини не підключені (Фаза 3
   оригінального плану).
 - **News/Calendar/Community/Settings** навмисно приховані з sidebar, доки

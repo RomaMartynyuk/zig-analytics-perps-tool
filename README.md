@@ -263,6 +263,7 @@ Cron retries and repeated manual runs update the same UTC-day row.
 These read-only endpoints are ready for UI modules but do not change the
 current Analytics Canvas:
 
+- `/api/analytics/market-share?metric=volume&period=current`
 - `/api/analytics/market-share?metric=volume&period=30d&protocols=hyperliquid,lighter`
 - `/api/analytics/movers?metric=open_interest&period=30d`
 - `/api/analytics/concentration?metric=volume&period=90d`
@@ -272,6 +273,9 @@ current Analytics Canvas:
 Supported share metrics are `volume`, `open_interest`, and `tvl`. A 7D/30D/90D
 response exposes `sufficientHistory`, `availableDays`, and coverage. Until the
 required number of consecutive UTC-day observations exists, `values` is empty.
+The `current` period always uses only the latest canonical `snapshot_date`; it
+returns its captured time, ranked values, coverage, provenance, and the dynamic
+list of protocols missing the selected metric.
 For rolling 24h volume, growth compares the average of the latest N daily
 observations with the previous N observations; it is not labelled as a period
 sum. `volume-oi` calculates denominators using only protocols with a valid
