@@ -347,6 +347,52 @@ test('Signal Engine produces deterministic current signals and isolates failed d
   assert.ok(isolated.signals.length > 0);
 });
 
+test('Signal Engine discounts a tiny-OI ratio artifact while retaining market-impactful outliers', () => {
+  const protocols = [
+    { id: 1, slug: 'leader', name: 'Leader', volume24h: 500, openInterest: 500, volumeOiRatio: 1, volumeShare: 50, openInterestShare: 50, shareGapPp: 0, volumeRank: 1, openInterestRank: 1 },
+    { id: 2, slug: 'two', name: 'Two', volume24h: 200, openInterest: 100, volumeOiRatio: 2, volumeShare: 20, openInterestShare: 20, shareGapPp: 0, volumeRank: 2, openInterestRank: 2 },
+    { id: 3, slug: 'three', name: 'Three', volume24h: 150, openInterest: 50, volumeOiRatio: 3, volumeShare: 15, openInterestShare: 15, shareGapPp: 0, volumeRank: 3, openInterestRank: 3 },
+    { id: 4, slug: 'four', name: 'Four', volume24h: 100, openInterest: 25, volumeOiRatio: 4, volumeShare: 10, openInterestShare: 10, shareGapPp: 0, volumeRank: 4, openInterestRank: 4 },
+    { id: 5, slug: 'five', name: 'Five', volume24h: 40, openInterest: 8, volumeOiRatio: 5, volumeShare: 4, openInterestShare: 4, shareGapPp: 0, volumeRank: 5, openInterestRank: 5 },
+    { id: 6, slug: 'tiny-oi', name: 'Tiny OI', volume24h: 3, openInterest: .03, volumeOiRatio: 100, volumeShare: .3, openInterestShare: .003, shareGapPp: .297, volumeRank: 6, openInterestRank: 6 },
+  ];
+  const result = runSignalEngine({ current: { coverage: { total: 6, volumeAvailable: 6, openInterestAvailable: 6 }, protocols }, growth: {}, snapshotDate: '2026-09-03' });
+  assert.equal(result.signals.some((item) => item.protocolSlug === 'tiny-oi' && item.type === 'high_turnover'), false);
+  assert.ok(result.diagnostics.suppressed.some((item) => item.protocolSlug === 'tiny-oi' && item.suppressedBy === 'below_quality_threshold'));
+});
+
+test('Signal Engine combines multi-metric leadership into one card', () => {
+  const leader = { id: 1, slug: 'leader', name: 'Leader', volume24h: 900, openInterest: 800, volumeOiRatio: 1.1, volumeShare: 60, openInterestShare: 60, shareGapPp: 0, volumeRank: 1, openInterestRank: 1 };
+  const protocols = [leader, ...Array.from({ length: 5 }, (_, index) => ({ id: index + 2, slug: `p${index}`, name: `P${index}`, volume24h: 50 - index, openInterest: 50 - index, volumeOiRatio: 1, volumeShare: 8 - index, openInterestShare: 8 - index, shareGapPp: 0, volumeRank: index + 2, openInterestRank: index + 2 }))];
+  const result = runSignalEngine({ current: { coverage: { total: 6, volumeAvailable: 6, openInterestAvailable: 6 }, protocols, tvlLeader: { ...leader, value: 700 } }, growth: {}, snapshotDate: '2026-09-03' });
+  const leadership = result.signals.filter((item) => item.type === 'market_leadership' && item.protocolSlug === 'leader');
+  assert.equal(leadership.length, 1);
+  assert.equal(leadership[0].evidence.length, 5);
+});
+
+test('Signal Engine keeps share-gap evidence ahead of equivalent turnover evidence for one protocol', () => {
+  const protocol = { id: 1, slug: 'alpha', name: 'Alpha' };
+  const candidates = [
+    { id: 'turnover', type: 'low_turnover', category: 'activity', protocolSlug: 'alpha', protocolName: 'Alpha', protocolId: 1, period: 'current', family: 'oi_heavy_structure', score: 80 },
+    { id: 'gap', type: 'share_gap_divergence', category: 'structure', protocolSlug: 'alpha', protocolName: 'Alpha', protocolId: 1, period: 'current', family: 'oi_heavy_structure', score: 80 },
+  ];
+  const result = runSignalEngine({ current: { coverage: { total: 0 }, protocols: [] }, growth: {}, snapshotDate: '2026-09-03' }, { detectors: [() => candidates] });
+  assert.equal(result.signals[0].type, 'share_gap_divergence');
+  assert.equal(result.diagnostics.suppressed[0].id, 'turnover');
+  assert.equal(protocol.slug, 'alpha');
+});
+
+test('Signal Engine does not classify a tied peer group as statistical turnover outliers', () => {
+  const protocols = Array.from({ length: 6 }, (_, index) => ({
+    id: index + 1, slug: `equal-${index}`, name: `Equal ${index}`,
+    volume24h: 100, openInterest: 100, volumeOiRatio: 1,
+    volumeShare: 100 / 6, openInterestShare: 100 / 6, shareGapPp: 0,
+    volumeRank: index + 1, openInterestRank: index + 1,
+  }));
+  const result = runSignalEngine({ current: { coverage: { total: 6, volumeAvailable: 6, openInterestAvailable: 6 }, protocols }, growth: {}, snapshotDate: '2026-09-03' });
+  assert.equal(result.signals.some((item) => item.type === 'high_turnover' || item.type === 'low_turnover'), false);
+});
+
 test('Signal history and response do not fabricate historical periods or include a tiny peer sample', () => {
   const rows = [{ id: 1, slug: 'only', name: 'Only', snapshot_date: '2026-09-04', volume_24h: 10, open_interest: 1, tvl: null }];
   const history = buildSignalHistory(rows);

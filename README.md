@@ -319,6 +319,52 @@ observations with the previous N observations; it is not labelled as a period
 sum. `volume-oi` calculates denominators using only protocols with a valid
 metric on that snapshot date.
 
+### Zig Signals calibration
+
+`/api/analytics/signals` derives research prompts only from the canonical
+snapshot layer. Its read-only calibration command is:
+
+```bash
+npm run check:signals
+```
+
+It reports the canonical date, metric coverage, peer-sample distributions,
+raw candidates, displayed signals, and suppressed candidates without writing
+to Neon. Signals require at least six comparable peers and a quality score of
+70. Structural outliers use the outer 10% of the peer distribution, then have
+their score discounted by covered-market impact so a ratio created by very
+small OI cannot dominate the feed. Multiple leadership dimensions for the
+same protocol are consolidated into one card. Missing metrics remain missing;
+no detector invents zeroes or historical data.
+
+### Daily Research Feed
+
+The **Daily Research** workspace consumes the calibrated Zig Signals output;
+it does not run a separate detector system. Signals with the same protocol,
+period, and semantic family become one deterministic Research Case, while
+independent families remain separate. Case IDs use
+`research:{canonical-snapshot-date}:{protocol-slug}:{family}`, so only a
+user’s workflow status needs persistence.
+
+Run the migration once after pulling this feature:
+
+```bash
+npm run db:migrate
+```
+
+It creates `research_case_statuses` for the three workflow states:
+`IGNORED`, `WATCHING`, and `RESEARCHING`. The normal feed hides ignored cases;
+the Ignored filter reveals them again. The diagnostic remains read-only:
+
+```bash
+npm run check:research-feed
+```
+
+`GET /api/research/feed` returns the compact feed. The same endpoint accepts a
+validated `PATCH` containing `{ caseId, status }` to persist a workflow state.
+The feed always displays **Data through** the canonical UTC snapshot date;
+it never substitutes the browser date or fabricates historical context.
+
 ## Next steps
 
 - Verify on the live deployment how many of the 16 registered exchanges

@@ -123,7 +123,7 @@ export async function getVolumeOiAnalysis(sql = getSql()) {
   return buildVolumeOiAnalysis(rows, { snapshotDate, capturedAt, totalProtocols });
 }
 
-export async function getSignals({ period = 'all', category = 'all', limit } = {}, sql = getSql()) {
+export async function getSignals({ period = 'all', category = 'all', limit, diagnostic = false } = {}, sql = getSql()) {
   const [latestRows, totalProtocols, historicalRows] = await Promise.all([
     sql`SELECT MAX(snapshot_date) AS snapshot_date, MAX(captured_at) AS captured_at FROM protocol_daily_snapshots`,
     getActiveProtocolCount(sql),
@@ -138,5 +138,5 @@ export async function getSignals({ period = 'all', category = 'all', limit } = {
     .filter((row) => Number.isFinite(row.tvlValue) && row.tvlValue >= 0)
     .sort((left, right) => right.tvlValue - left.tvlValue)[0];
   if (tvlLeader) current.tvlLeader = { id: tvlLeader.id, slug: tvlLeader.slug, name: tvlLeader.name, value: tvlLeader.tvlValue, dataSource: tvlLeader.data_source || null };
-  return buildSignalsResponse({ current, rows: historicalRows, totalProtocols, snapshotDate: canonicalSnapshotDate, period, category, limit });
+  return buildSignalsResponse({ current, rows: historicalRows, totalProtocols, snapshotDate: canonicalSnapshotDate, period, category, limit, includeDiagnostics: diagnostic });
 }
