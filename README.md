@@ -99,6 +99,22 @@ Numbers are included only after the public API and USD units were verified.
 Volume and OI are tracked **independently per exchange** — a source can
 report one without the other.
 
+### Arcus mainnet adapter
+
+Arcus is collected server-side from the public mainnet endpoint
+`GET https://api.arcus.xyz/v1/markets`; no API key or trading functionality is
+used. The response is filtered to unique `marketId` records where
+`type = PERPETUAL` and `status = ONLINE`, across all Arcus perpetual asset
+categories. `volume24hNotional` is summed directly as USD quote notional.
+`openInterest` is base quantity, so Zig converts each valid market by its
+co-timestamped `markPrice` before summing to USD. `markets_count` is the number
+of those unique active perpetual markets. Missing or malformed source fields
+remain `NULL`, never zero. TVL remains independently sourced from DeFiLlama;
+combined daily snapshots use `arcus_api+defillama` when both sources report.
+
+Run `npm run check:arcus` for a read-only live mainnet diagnostic. It does not
+write to Neon or access private account data.
+
 The Dashboard's legacy 7d/30d fields remain `null`; no exchange exposes those
 as one live call. Historical calculations now come from the separate daily
 snapshot API after enough real observations have accumulated.

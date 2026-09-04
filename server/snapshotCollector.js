@@ -26,9 +26,14 @@ export function validMetric(value) {
   return Number.isFinite(number) && number >= 0 ? number : null;
 }
 
+function validMarketsCount(value) {
+  const number = validMetric(value);
+  return Number.isInteger(number) && number > 0 ? number : null;
+}
+
 function resolveDataSource(metrics, tvlSnapshot) {
   const sources = new Set();
-  if (metrics && (metrics.volume != null || metrics.openInterest != null)) sources.add(metrics.dataSource);
+  if (metrics && (metrics.volume != null || metrics.openInterest != null || metrics.marketsCount != null)) sources.add(metrics.dataSource);
   if (tvlSnapshot.tvl != null) sources.add(tvlSnapshot.dataSource);
   return sources.size ? [...sources].join('+') : null;
 }
@@ -69,6 +74,7 @@ export async function collectDailyProtocolSnapshots({
     const tvlSnapshot = tvlBySlug.get(protocol.slug) || { tvl: null, dataSource: null, sourceUpdatedAt: null };
     const volume24h = validMetric(metrics?.volume);
     const openInterest = validMetric(metrics?.openInterest);
+    const marketsCount = validMarketsCount(metrics?.marketsCount);
     const tvl = validMetric(tvlSnapshot.tvl);
 
     try {
@@ -79,7 +85,7 @@ export async function collectDailyProtocolSnapshots({
         volume24h,
         openInterest,
         tvl,
-        marketsCount: null,
+        marketsCount,
         dataSource: resolveDataSource(metrics, { ...tvlSnapshot, tvl }),
         sourceUpdatedAt: tvlSnapshot.sourceUpdatedAt || null,
       });

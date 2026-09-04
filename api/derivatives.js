@@ -1,3 +1,5 @@
+import { fetchArcusMarketMetrics } from '../server/arcusAdapter.js';
+
 // Vercel Serverless Function — aggregate Perp Volume (24h) and Open
 // Interest across tracked exchanges, from direct exchange APIs only
 // (DefiLlama dropped entirely — see prior comments in project history).
@@ -44,7 +46,10 @@ async function fetchWithRetry(url, options = {}, { timeoutMs = 8000, retries = 2
       clearTimeout(timer);
 
       if (res.status === 429 && attempt < retries) {
-        const backoffMs = 500 * Math.pow(2, attempt); // 500ms, 1000ms, ...
+        const retryAfterSeconds = Number(res.headers.get('retry-after'));
+        const backoffMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds >= 0
+          ? retryAfterSeconds * 1000
+          : 500 * Math.pow(2, attempt); // 500ms, 1000ms, ...
         await new Promise((r) => setTimeout(r, backoffMs));
         continue;
       }
@@ -479,22 +484,16 @@ async function risexData() {
 async function trueNorthData() { return { volume: null, openInterest: null }; }
 
 // --- Arcus -----------------------------------------------------------------
-// A single public response contains every market. Volume is already USD
-// notional; OI is base quantity and is converted using the market's mark.
+// One mainnet response supplies all metrics. The normalizer filters ONLINE
+// PERPETUAL markets, deduplicates by official marketId, and keeps partials.
 async function arcusData() {
-  const data = await fetchWithRetry('https://api.arcus.xyz/v1/markets');
-  const markets = data?.markets;
-  if (!Array.isArray(markets)) return { volume: null, openInterest: null };
-
-  return sumRows(markets, {
-    volume: (market) => market.volume24hNotional,
-    openInterest: (market) => {
-      const quantity = toFiniteNumber(market.openInterest);
-      const price = toFiniteNumber(market.markPrice);
-      return quantity != null && price != null ? quantity * price : null;
-    },
-    predicate: (market) => market.type === 'PERPETUAL' && market.status === 'ONLINE',
-  });
+  const metrics = await fetchArcusMarketMetrics(fetchWithRetry);
+  if (metrics.marketsCount == null) {
+    console.warn('[arcus] /v1/markets returned no active perpetual market coverage');
+  } else {
+    console.info(`[arcus] active perpetual markets: ${metrics.marketsCount}; volume24h: ${metrics.volume ?? 'unavailable'}; openInterest: ${metrics.openInterest ?? 'unavailable'}`);
+  }
+  return metrics;
 }
 async function gmTradeData() { return { volume: null, openInterest: null }; }
 
@@ -552,6 +551,10 @@ function validMetric(value) {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
 }
 
+function validMarketsCount(value) {
+  return Number.isInteger(value) && value > 0 ? value : null;
+}
+
 /**
  * Fetches each normalized protocol adapter once. The daily collector uses
  * `{ fresh: true }` so a failed API call remains NULL for that UTC day rather
@@ -567,6 +570,7 @@ export async function getNormalizedDerivativesMetrics({ fresh = false } = {}) {
       dataSource: adapter.dataSource,
       volume: validMetric(value?.volume),
       openInterest: validMetric(value?.openInterest),
+      marketsCount: validMarketsCount(value?.marketsCount),
       fresh,
       error: result.status === 'rejected' ? String(result.reason?.message || result.reason) : null,
     };

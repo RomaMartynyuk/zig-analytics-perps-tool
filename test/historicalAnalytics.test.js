@@ -14,6 +14,7 @@ import { upsertDailySnapshot } from '../server/snapshotRepository.js';
 import { selectTopMarketShareSeries } from '../src/lib/marketShare.js';
 import { sortGrowthRows } from '../src/lib/growthMatrix.js';
 import { buildSignalHistory, buildSignalsResponse, runSignalEngine } from '../server/signalEngine.js';
+import { normalizeArcusMarkets } from '../server/arcusAdapter.js';
 
 function rowsForDays(days, firstValue = 25, lastValue = firstValue) {
   return Array.from({ length: days }, (_, index) => {
@@ -368,6 +369,33 @@ test('analytics normalize PostgreSQL DATE values returned as native Date objects
   assert.equal(history.endDate, '2026-01-07');
 });
 
+test('Arcus market adapter normalizes USD volume, base OI, and active perpetual market count', () => {
+  const payload = { markets: [
+    { marketId: 1, type: 'PERPETUAL', status: 'ONLINE', volume24hNotional: '125.5', openInterest: '2.5', markPrice: '100' },
+    { marketId: 2, type: 'PERPETUAL', status: 'ONLINE', volume24hNotional: '74.5', openInterest: '4', markPrice: '50' },
+    { marketId: 3, type: 'PERPETUAL', status: 'OFFLINE', volume24hNotional: '999', openInterest: '10', markPrice: '10' },
+    { marketId: 4, type: 'SPOT', status: 'ONLINE', volume24hNotional: '999', openInterest: '10', markPrice: '10' },
+    { marketId: 2, type: 'PERPETUAL', status: 'ONLINE', volume24hNotional: '74.5', openInterest: '4', markPrice: '50' },
+  ] };
+  const normalized = normalizeArcusMarkets(payload);
+  assert.equal(normalized.marketsCount, 2);
+  assert.equal(normalized.volume, 200);
+  assert.equal(normalized.openInterest, 450);
+  assert.equal(normalized.diagnostics.duplicateMarketIds, 1);
+});
+
+test('Arcus adapter preserves partial data and rejects malformed market metrics', () => {
+  const normalized = normalizeArcusMarkets({ markets: [
+    { marketId: 1, type: 'PERPETUAL', status: 'ONLINE', volume24hNotional: '100', openInterest: null, markPrice: '50' },
+    { marketId: 2, type: 'PERPETUAL', status: 'ONLINE', volume24hNotional: 'Infinity', openInterest: '-3', markPrice: '10' },
+    { marketId: 'not-an-id', type: 'PERPETUAL', status: 'ONLINE', volume24hNotional: '50', openInterest: '1', markPrice: '50' },
+  ] });
+  assert.equal(normalized.marketsCount, 2);
+  assert.equal(normalized.volume, 100);
+  assert.equal(normalized.openInterest, null);
+  assert.equal(normalized.diagnostics.invalidMarkets, 1);
+});
+
 test('daily upsert targets the same protocol/date key on retries', async () => {
   const { sql, calls } = fakeSql();
   const snapshot = {
@@ -423,11 +451,13 @@ test('inactive configured protocols are synced but do not receive new daily snap
       { slug: 'alpha', name: 'Alpha', metricsKey: 'Alpha', defillamaSlug: 'alpha', isActive: true },
       { slug: 'beta', name: 'Beta', metricsKey: 'Beta', defillamaSlug: 'beta', isActive: false },
     ],
-    loadMetrics: async () => [{ name: 'Alpha', dataSource: 'alpha_api', volume: 1, openInterest: 1 }],
+    loadMetrics: async () => [{ name: 'Alpha', dataSource: 'alpha_api', volume: 1, openInterest: 1, marketsCount: 58 }],
     loadTvl: async () => ({ tvl: 1, dataSource: 'defillama', sourceUpdatedAt: null }),
     log: { info() {}, error() {} },
   });
   assert.equal(summary.saved, 1);
   assert.equal(calls.filter((call) => call.text.includes('INSERT INTO protocols')).length, 2);
-  assert.equal(calls.filter((call) => call.text.includes('INSERT INTO protocol_daily_snapshots')).length, 1);
+  const writes = calls.filter((call) => call.text.includes('INSERT INTO protocol_daily_snapshots'));
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].values[6], 58);
 });

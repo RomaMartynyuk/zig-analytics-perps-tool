@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "db:migrate": "node --env-file=.env.local scripts/migrate.js",
     "snapshots:collect": "node --env-file=.env.local scripts/collect-daily-snapshots.js",
+    "check:arcus": "node scripts/check-arcus-public-data.js",
     "test": "node --test"
   },
   "dependencies": {
