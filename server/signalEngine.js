@@ -1,4 +1,4 @@
-import { PERIOD_DAYS, buildGrowthMatrix, continuousRecentDates, toValidNumber } from './analyticsMath.js';
+import { PERIOD_DAYS, buildGrowthMatrix, continuousRecentDates, snapshotDateKey, toValidNumber } from './analyticsMath.js';
 
 export const SIGNAL_CONFIG = {
   minPeerSample: 5,
@@ -136,5 +136,5 @@ export function buildSignalsResponse({ current, rows, totalProtocols, snapshotDa
   const growth = Object.fromEntries(Object.keys(PERIOD_DAYS).map((key) => [key, buildGrowthMatrix(rows, { period: key, totalProtocols })]));
   const history = buildSignalHistory(rows);
   const { signals, detectorErrors } = runSignalEngine({ current, growth, snapshotDate }, { period, category, limit });
-  return { snapshotDate, coverage: { total: current.coverage.total, volumeAvailable: current.coverage.volumeAvailable, oiAvailable: current.coverage.openInterestAvailable, tvlAvailable: rows.filter((row) => String(row.snapshot_date).slice(0, 10) === String(snapshotDate).slice(0, 10) && toValidNumber(row.tvl) != null).length }, history, signals, detectorErrors };
+  return { snapshotDate, coverage: { total: current.coverage.total, volumeAvailable: current.coverage.volumeAvailable, oiAvailable: current.coverage.openInterestAvailable, tvlAvailable: rows.filter((row) => snapshotDateKey(row.snapshot_date) === snapshotDateKey(snapshotDate) && toValidNumber(row.tvl) != null).length }, history, signals, detectorErrors };
 }

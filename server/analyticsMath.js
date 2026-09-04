@@ -7,18 +7,26 @@ export function toValidNumber(value) {
   return Number.isFinite(number) && number >= 0 ? number : null;
 }
 
-function dateKey(value) {
-  return String(value).slice(0, 10);
+// PostgreSQL clients can return a DATE either as `YYYY-MM-DD` or as a native
+// Date. Keep the canonical analytics day independent from that driver detail.
+export function snapshotDateKey(value) {
+  if (value == null) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
+  const text = String(value);
+  if (/^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0, 10);
+  const parsed = new Date(text);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
 }
 
 function previousUtcDay(day) {
   const date = new Date(`${day}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) return null;
   date.setUTCDate(date.getUTCDate() - 1);
   return date.toISOString().slice(0, 10);
 }
 
 export function continuousRecentDates(rows, requiredDays) {
-  const dates = [...new Set(rows.map((row) => dateKey(row.snapshot_date)))].sort();
+  const dates = [...new Set(rows.map((row) => snapshotDateKey(row.snapshot_date)).filter(Boolean))].sort();
   const selected = [];
   let current = dates.at(-1);
   const available = new Set(dates);
@@ -147,7 +155,7 @@ export function buildMarketShareHistory(rows, { period, totalProtocols, protocol
   const allowedProtocols = protocols?.length ? new Set(protocols) : null;
   const latestDate = dates.at(-1) || null;
   const latestAvailable = latestDate
-    ? rows.filter((row) => dateKey(row.snapshot_date) === latestDate && toValidNumber(row.metric_value) != null).length
+    ? rows.filter((row) => snapshotDateKey(row.snapshot_date) === latestDate && toValidNumber(row.metric_value) != null).length
     : 0;
 
   if (!sufficientHistory) {
@@ -166,7 +174,7 @@ export function buildMarketShareHistory(rows, { period, totalProtocols, protocol
   const values = [];
   let latestCoverage = coverage(totalProtocols, 0);
   for (const date of dates) {
-    const dayRows = rows.filter((row) => dateKey(row.snapshot_date) === date)
+    const dayRows = rows.filter((row) => snapshotDateKey(row.snapshot_date) === date)
       .map((row) => ({ ...row, metric_value: toValidNumber(row.metric_value) }))
       .filter((row) => row.metric_value != null);
     const total = dayRows.reduce((sum, row) => sum + row.metric_value, 0);
@@ -281,7 +289,7 @@ export function buildGrowthMetrics(rows, { period, metric }) {
     const value = toValidNumber(row.metric_value);
     if (value == null) continue;
     const points = grouped.get(row.slug) || [];
-    points.push({ ...row, date: dateKey(row.snapshot_date), metric_value: value });
+    points.push({ ...row, date: snapshotDateKey(row.snapshot_date), metric_value: value });
     grouped.set(row.slug, points);
   }
 
@@ -342,7 +350,7 @@ function metricGrowth(startRow, endRow, field) {
 }
 
 function findSnapshot(rows, date) {
-  return rows.find((row) => dateKey(row.snapshot_date) === date) || null;
+  return rows.find((row) => snapshotDateKey(row.snapshot_date) === date) || null;
 }
 
 /**
@@ -379,8 +387,8 @@ export function buildGrowthMatrix(rows, { period, totalProtocols }) {
     };
   }
 
-  const startSnapshots = rows.filter((row) => dateKey(row.snapshot_date) === startDate);
-  const endSnapshots = rows.filter((row) => dateKey(row.snapshot_date) === endDate);
+  const startSnapshots = rows.filter((row) => snapshotDateKey(row.snapshot_date) === startDate);
+  const endSnapshots = rows.filter((row) => snapshotDateKey(row.snapshot_date) === endDate);
   const startVolume = startSnapshots.map((row) => toValidNumber(row.volume_24h)).filter((value) => value != null);
   const endVolume = endSnapshots.map((row) => toValidNumber(row.volume_24h)).filter((value) => value != null);
   const startVolumeTotal = startVolume.reduce((sum, value) => sum + value, 0);

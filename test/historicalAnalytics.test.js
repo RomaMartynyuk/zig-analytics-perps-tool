@@ -6,6 +6,7 @@ import {
   buildMarketShareHistory,
   buildMarketShareMovers,
   buildVolumeOiAnalysis,
+  snapshotDateKey,
   toValidNumber,
 } from '../server/analyticsMath.js';
 import { collectDailyProtocolSnapshots, utcSnapshotDate, validMetric } from '../server/snapshotCollector.js';
@@ -357,6 +358,14 @@ test('Signal history and response do not fabricate historical periods or include
 
 test('UTC snapshot identity is independent from a local timezone', () => {
   assert.equal(utcSnapshotDate(new Date('2026-08-27T23:30:00-05:00')), '2026-08-28');
+});
+
+test('analytics normalize PostgreSQL DATE values returned as native Date objects', () => {
+  const rows = rowsForDays(7).map((row) => ({ ...row, snapshot_date: new Date(`${row.snapshot_date}T00:00:00.000Z`) }));
+  assert.equal(snapshotDateKey(rows[0].snapshot_date), '2026-01-01');
+  const history = buildMarketShareHistory(rows, { period: '7d', totalProtocols: 2 });
+  assert.equal(history.sufficientHistory, true);
+  assert.equal(history.endDate, '2026-01-07');
 });
 
 test('daily upsert targets the same protocol/date key on retries', async () => {
