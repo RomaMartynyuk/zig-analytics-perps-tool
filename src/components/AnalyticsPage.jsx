@@ -3,6 +3,7 @@ import MarketShareMovers from './MarketShareMovers';
 import VolumeOiAnalysis from './VolumeOiAnalysis';
 import VolumeOiShareAnalysis from './VolumeOiShareAnalysis';
 import GrowthMatrix from './GrowthMatrix';
+import ZigSignals from './ZigSignals';
 
 export default function AnalyticsPage() {
   return (
@@ -16,6 +17,7 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="analytics-skeleton-grid">
+        <ZigSignals />
         <MarketShareMap />
         <VolumeOiAnalysis />
         <VolumeOiShareAnalysis />

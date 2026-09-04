@@ -9,6 +9,7 @@ import {
   buildMarketShareHistory,
   buildMarketShareMovers,
 } from './analyticsMath.js';
+import { buildSignalsResponse } from './signalEngine.js';
 
 const METRIC_COLUMNS = { volume: 'volume_24h', open_interest: 'open_interest', tvl: 'tvl' };
 
@@ -119,4 +120,21 @@ export async function getVolumeOiAnalysis(sql = getSql()) {
     ORDER BY p.slug ASC
   `, [snapshotDate]);
   return buildVolumeOiAnalysis(rows, { snapshotDate, capturedAt, totalProtocols });
+}
+
+export async function getSignals({ period = 'all', category = 'all', limit } = {}, sql = getSql()) {
+  const [latestRows, totalProtocols, historicalRows] = await Promise.all([
+    sql`SELECT MAX(snapshot_date) AS snapshot_date, MAX(captured_at) AS captured_at FROM protocol_daily_snapshots`,
+    getActiveProtocolCount(sql),
+    sql.query(`SELECT p.id, p.slug, p.name, s.snapshot_date, s.volume_24h, s.open_interest, s.tvl, s.data_source FROM protocols p LEFT JOIN protocol_daily_snapshots s ON s.protocol_id = p.id WHERE p.is_active = TRUE ORDER BY s.snapshot_date ASC NULLS FIRST, p.slug ASC`),
+  ]);
+  const snapshotDate = latestRows[0]?.snapshot_date || null;
+  const currentRows = historicalRows.filter((row) => String(row.snapshot_date).slice(0, 10) === String(snapshotDate).slice(0, 10));
+  const current = buildVolumeOiAnalysis(currentRows, { snapshotDate, capturedAt: latestRows[0]?.captured_at || null, totalProtocols });
+  const tvlLeader = currentRows
+    .map((row) => ({ ...row, tvlValue: Number(row.tvl) }))
+    .filter((row) => Number.isFinite(row.tvlValue) && row.tvlValue >= 0)
+    .sort((left, right) => right.tvlValue - left.tvlValue)[0];
+  if (tvlLeader) current.tvlLeader = { id: tvlLeader.id, slug: tvlLeader.slug, name: tvlLeader.name, value: tvlLeader.tvlValue, dataSource: tvlLeader.data_source || null };
+  return buildSignalsResponse({ current, rows: historicalRows, totalProtocols, snapshotDate, period, category, limit });
 }

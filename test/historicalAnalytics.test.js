@@ -12,6 +12,7 @@ import { collectDailyProtocolSnapshots, utcSnapshotDate, validMetric } from '../
 import { upsertDailySnapshot } from '../server/snapshotRepository.js';
 import { selectTopMarketShareSeries } from '../src/lib/marketShare.js';
 import { sortGrowthRows } from '../src/lib/growthMatrix.js';
+import { buildSignalHistory, buildSignalsResponse, runSignalEngine } from '../server/signalEngine.js';
 
 function rowsForDays(days, firstValue = 25, lastValue = firstValue) {
   return Array.from({ length: days }, (_, index) => {
@@ -329,6 +330,29 @@ test('Growth Matrix sorting orders selected metrics and always keeps missing val
   assert.deepEqual(sortGrowthRows(rows, 'volume').map((row) => row.slug), ['high', 'low', 'missing']);
   assert.deepEqual(sortGrowthRows(rows, 'volume', false).map((row) => row.slug), ['low', 'high', 'missing']);
   assert.deepEqual(sortGrowthRows(rows, 'volumeShare').map((row) => row.slug), ['high', 'low', 'missing']);
+});
+
+test('Signal Engine produces deterministic current signals and isolates failed detectors', () => {
+  const current = { coverage: { total: 6, volumeAvailable: 6, openInterestAvailable: 6 }, protocols: Array.from({ length: 6 }, (_, index) => ({ id: index + 1, slug: `p${index}`, name: `P${index}`, volume24h: 100 + index, openInterest: index === 5 ? 1 : 100, volumeOiRatio: index === 5 ? 105 : 1 + index / 100, volumeShare: 10 + index, openInterestShare: index === 5 ? 1 : 10 + index, shareGapPp: index === 5 ? 14 : 0, volumeRank: index + 1, openInterestRank: index === 5 ? 6 : index + 1 })) };
+  const context = { current, snapshotDate: '2026-09-04', growth: {} };
+  const first = runSignalEngine(context);
+  const second = runSignalEngine(context);
+  assert.ok(first.signals.length > 0);
+  assert.equal(first.signals[0].id, second.signals[0].id);
+  assert.ok(first.signals.every((item) => item.score >= 0 && item.score <= 100));
+  const isolated = runSignalEngine(context, { detectors: [() => { throw new Error('broken'); }, () => first.signals] });
+  assert.equal(isolated.detectorErrors.length, 1);
+  assert.ok(isolated.signals.length > 0);
+});
+
+test('Signal history and response do not fabricate historical periods or include a tiny peer sample', () => {
+  const rows = [{ id: 1, slug: 'only', name: 'Only', snapshot_date: '2026-09-04', volume_24h: 10, open_interest: 1, tvl: null }];
+  const history = buildSignalHistory(rows);
+  assert.equal(history['7d'].available, false);
+  const current = { coverage: { total: 1, volumeAvailable: 1, openInterestAvailable: 1 }, protocols: [{ id: 1, slug: 'only', name: 'Only', volume24h: 10, openInterest: 1, volumeOiRatio: 10, volumeShare: 100, openInterestShare: 100, shareGapPp: 0, volumeRank: 1, openInterestRank: 1 }] };
+  const response = buildSignalsResponse({ current, rows, totalProtocols: 1, snapshotDate: '2026-09-04' });
+  assert.equal(response.history['7d'].available, false);
+  assert.equal(response.signals.some((item) => item.type === 'high_turnover'), false);
 });
 
 test('UTC snapshot identity is independent from a local timezone', () => {

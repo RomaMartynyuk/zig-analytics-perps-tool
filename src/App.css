@@ -807,10 +807,11 @@
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(420px, .95fr);
   grid-template-areas:
+    "signals signals"
     "market-map volume-oi"
     "share-compare movers"
     "growth growth";
-  grid-template-rows: minmax(440px, auto) minmax(330px, auto) minmax(390px, auto);
+  grid-template-rows: minmax(360px, auto) minmax(440px, auto) minmax(330px, auto) minmax(390px, auto);
   gap: 18px;
   align-items: stretch;
 }
@@ -822,6 +823,25 @@
 .analytics-skeleton-wide { grid-column: span 2; grid-row: span 2; }
 .analytics-skeleton-tall { grid-row: span 3; }
 .analytics-skeleton-small { grid-row: span 1; }
+.zig-signals { grid-area: signals; position: relative; min-height: 360px; padding: 18px 20px 34px; }
+.zig-signals-controls { display: grid; gap: 5px; }
+.zig-signals-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+.zig-signal-card { min-width: 0; padding: 11px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--card-tint); }
+.zig-signal-card > div:first-child { display: flex; justify-content: space-between; gap: 8px; }
+.zig-signal-severity,.zig-signal-period { border-radius: 999px; padding: 3px 6px; font-size: 8px; font-weight: 700; text-transform: uppercase; }
+.zig-signal-severity { background: rgba(77, 118, 159, .16); color: var(--ink-soft); }
+.zig-signal-severity.high,.zig-signal-severity.extreme { background: rgba(228, 91, 78, .14); color: var(--down); }
+.zig-signal-severity.medium { background: rgba(179, 109, 63, .14); color: var(--ink-soft); }
+.zig-signal-period { background: var(--card); color: var(--ink-faint); }
+.zig-signal-card h3 { margin-top: 8px; color: var(--ink); font-size: 12px; }
+.zig-signal-card > strong { display:block; margin-top: 3px; color: var(--ink-soft); font-size: 10px; }
+.zig-signal-evidence { display:flex; flex-wrap:wrap; gap: 5px 10px; margin-top: 8px; }
+.zig-signal-evidence span { color: var(--ink-faint); font-size: 8px; font-weight: 600; }.zig-signal-evidence b { display:block; color: var(--ink); font-size: 10px; }
+.zig-signal-card p { min-height: 26px; margin-top: 7px; color: var(--ink-faint); font-size: 8.5px; line-height: 1.35; }
+.zig-signal-card button { margin-top: 6px; border:0; background:transparent; color: var(--accent-2); cursor:pointer; font:inherit; font-size:8.5px; font-weight:700; padding:0; }
+.zig-signal-why { display:grid; gap:3px; margin-top:8px; padding-top:8px; border-top:1px solid var(--line); color:var(--ink-faint); font-size:8px; line-height:1.3; }.zig-signal-why strong{color:var(--ink-soft)}
+.zig-signals-history { display:flex; flex-wrap:wrap; gap:5px 9px; margin-top:10px; color:var(--ink-faint); font-size:8.5px; font-weight:600; }.zig-signals-history span{color:var(--ink-soft)}
+.zig-signals-empty { min-height:180px; }
 .analytics-skeleton-medium { grid-column: span 2; grid-row: span 1; }
 .market-share-map {
   grid-area: market-map;
@@ -1499,6 +1519,7 @@
   .analytics-skeleton-grid {
     grid-template-columns: 1fr;
     grid-template-areas:
+      "signals"
       "market-map"
       "volume-oi"
       "share-compare"
@@ -1513,6 +1534,8 @@
     grid-row: auto;
     padding: 16px;
   }
+  .zig-signals { grid-area: signals; min-height: auto; padding: 16px 16px 34px; }
+  .zig-signals-grid { grid-template-columns: 1fr; }
   .market-share-movers {
     grid-area: movers;
     grid-column: auto;
