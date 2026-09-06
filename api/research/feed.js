@@ -1,4 +1,6 @@
 import { getDailyResearchFeed, updateResearchCaseStatus } from '../../server/researchFeedService.js';
+import { getResearchCaseDetail } from '../../server/researchCaseDetailService.js';
+import { getLatestExternalResearch, runExternalResearch } from '../../server/externalResearchService.js';
 
 function body(req) {
   if (!req.body) return {};
@@ -8,7 +10,18 @@ function body(req) {
 
 export default async function handler(req, res) {
   try {
-    if (req.method === 'GET') return res.status(200).json(await getDailyResearchFeed({ limit: req.query.limit, status: req.query.status }));
+    if (req.method === 'GET') {
+      if (req.query.caseId) {
+        const detail = await getResearchCaseDetail(req.query.caseId);
+        if (!detail) return res.status(404).json({ error: 'Research case not found' });
+        return res.status(200).json({ ...detail, externalResearch: await getLatestExternalResearch(req.query.caseId) });
+      }
+      return res.status(200).json(await getDailyResearchFeed({ limit: req.query.limit, status: req.query.status }));
+    }
+    if (req.method === 'POST') {
+      const { caseId, window, refresh } = body(req);
+      return res.status(200).json(await runExternalResearch({ caseId, window, force: refresh === true }));
+    }
     if (req.method !== 'PATCH') return res.status(405).json({ error: 'Method not allowed' });
     const { caseId, status } = body(req);
     const feed = await getDailyResearchFeed({ limit: 20, status: 'all' });
@@ -18,7 +31,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ id: caseId, status: saved });
   } catch (error) {
     if (error.message?.startsWith('Invalid')) return res.status(400).json({ error: error.message });
-    console.error('Daily Research Feed request failed', error);
-    return res.status(502).json({ error: 'Daily Research Feed is temporarily unavailable' });
+    console.error('Research request failed', error);
+    return res.status(502).json({ error: error.message === 'External research storage is not ready. Run database migrations.' ? error.message : 'Research data is temporarily unavailable' });
   }
 }

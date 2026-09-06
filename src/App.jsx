@@ -15,6 +15,7 @@ import FundingPage from './components/FundingPage';
 import PredictionsPage from './components/PredictionsPage';
 import AnalyticsPage from './components/AnalyticsPage';
 import DailyResearchPage from './components/DailyResearchPage';
+import ProtocolResearchView from './components/ProtocolResearchView';
 import ProjectIcon from './components/ProjectIcon';
 
 import { formatUSD, formatPercent, formatTokenPrice } from './lib/format';
@@ -231,11 +232,24 @@ function Dashboard() {
 }
 
 export default function App() {
-  const [active, setActive] = useState('dashboard');
+  const parseResearchHash = () => {
+    const match = window.location.hash.match(/^#research\/case\/(.+)$/);
+    return match ? decodeURIComponent(match[1]) : null;
+  };
+  const [researchCaseId, setResearchCaseId] = useState(parseResearchHash);
+  const [active, setActive] = useState(() => parseResearchHash() ? 'research-case' : 'dashboard');
+
+  useEffect(() => {
+    const onHashChange = () => { const caseId = parseResearchHash(); setResearchCaseId(caseId); if (caseId) setActive('research-case'); };
+    window.addEventListener('hashchange', onHashChange); return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+  const changePage = (page) => { if (window.location.hash) window.history.replaceState(null, '', window.location.pathname + window.location.search); setResearchCaseId(null); setActive(page); };
+  const openCase = (caseId) => { window.location.hash = `research/case/${encodeURIComponent(caseId)}`; };
+  const closeCase = () => { window.history.replaceState(null, '', window.location.pathname + window.location.search); setResearchCaseId(null); setActive('research'); };
 
   return (
     <div className="app-shell">
-      <Sidebar active={active} onChange={setActive} />
+      <Sidebar active={active === 'research-case' ? 'research' : active} onChange={changePage} />
 
       <main className="main">
         <Header />
@@ -259,7 +273,9 @@ export default function App() {
             ) : active === 'analytics' ? (
               <AnalyticsPage />
             ) : active === 'research' ? (
-              <DailyResearchPage />
+              <DailyResearchPage onOpenCase={openCase} />
+            ) : active === 'research-case' ? (
+              <ProtocolResearchView caseId={researchCaseId} onBack={closeCase} />
             ) : (
               <ComingSoon section={active} />
             )}

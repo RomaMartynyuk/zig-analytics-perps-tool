@@ -7,6 +7,22 @@ export function toValidNumber(value) {
   return Number.isFinite(number) && number >= 0 ? number : null;
 }
 
+export function median(values) {
+  const ordered = values.filter(Number.isFinite).sort((a, b) => a - b);
+  if (!ordered.length) return null;
+  const middle = Math.floor(ordered.length / 2);
+  return ordered.length % 2 ? ordered[middle] : (ordered[middle - 1] + ordered[middle]) / 2;
+}
+
+/** Mid-rank percentile: tied values do not all become 100th percentile. */
+export function percentileMidRank(value, values) {
+  const ordered = values.filter(Number.isFinite);
+  if (!ordered.length || !Number.isFinite(value)) return null;
+  const below = ordered.filter((item) => item < value).length;
+  const equal = ordered.filter((item) => item === value).length;
+  return (below + equal / 2) / ordered.length;
+}
+
 // PostgreSQL clients can return a DATE either as `YYYY-MM-DD` or as a native
 // Date. Keep the canonical analytics day independent from that driver detail.
 export function snapshotDateKey(value) {

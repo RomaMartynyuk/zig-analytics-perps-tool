@@ -365,6 +365,65 @@ validated `PATCH` containing `{ caseId, status }` to persist a workflow state.
 The feed always displays **Data through** the canonical UTC snapshot date;
 it never substitutes the browser date or fabricates historical context.
 
+### Protocol Research View
+
+**Open Research** uses a reload-safe hash route:
+
+```text
+#research/case/research:{snapshot-date}:{protocol-slug}:{family}
+```
+
+The existing research endpoint returns a detail payload when given `caseId`:
+`GET /api/research/feed?caseId=...`. It reconstructs the latest canonical
+case from calibrated Signals, then assembles the exact snapshot metrics,
+metric-specific peer ranks/medians/percentiles, source metadata, and stored
+history. Volume and OI shares always retain their separate full-valid-metric
+denominators. V1 intentionally does not reconstruct stale cases because
+historical Signal payloads are not yet persisted.
+
+Run a read-only dossier diagnostic with a case ID or protocol slug:
+
+```bash
+npm run check:research-case -- edgex
+```
+
+### External Research Assistant
+
+Each Protocol Research dossier now has an explicit **Research external
+context** action. It never runs on page load and never changes canonical
+snapshots, Signals, scores, or workflow status. Searches are anchored to the
+case’s canonical UTC snapshot date: `7D` searches from seven days before
+through one day after the snapshot; `30D` uses a thirty-day lookback.
+
+External findings are stored independently in `external_research_runs` and
+`external_research_findings` by migration `003_external_research.sql`. This
+makes a completed research run reproducible even though V1 does not persist
+full historical Signal payloads. Each finding stores only compact metadata,
+a factual summary, provenance, date, relevance explanation and its source URL
+— never a copied article body. A fresh click creates a new run; an existing
+run for the same case/window is reused unless **Refresh research** is chosen.
+
+The provider interface is server-only. Set `TAVILY_API_KEY` in Vercel to use
+Tavily search with richer source URLs. Without it, Zig uses a constrained
+Google News RSS fallback (six family-specific queries, five results each). The
+fallback is useful for availability but has weaker primary-source matching;
+low-confidence items are separated in the UI. No provider key reaches React.
+
+The central `projects.json` registry can optionally supply
+`external_research.website`, `docs`, `x`, and `partners` URLs. Those domains
+are used for source classification, so adding a protocol remains a registry
+and integration task rather than a UI rewrite. Unknown signal families use the
+generic product-update / announcement / integration / incentives query set.
+
+Run a real-data, read-only diagnostic (it does not persist a run):
+
+```bash
+npm run check:external-research -- edgex
+```
+
+The external layer reports verifiable events and possible relevance only. It
+does not claim an event caused a Zig observation.
+
 ## Next steps
 
 - Verify on the live deployment how many of the 16 registered exchanges

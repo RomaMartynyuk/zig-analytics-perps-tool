@@ -13,6 +13,8 @@
     "check:arcus": "node scripts/check-arcus-public-data.js",
     "check:signals": "node --env-file=.env.local scripts/check-signals.js",
     "check:research-feed": "node --env-file=.env.local scripts/check-research-feed.js",
+    "check:research-case": "node --env-file=.env.local scripts/check-research-case.js",
+    "check:external-research": "node --env-file=.env.local scripts/check-external-research.js",
     "test": "node --test"
   },
   "dependencies": {

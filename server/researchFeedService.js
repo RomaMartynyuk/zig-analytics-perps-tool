@@ -1,7 +1,7 @@
 import { getSql } from './db.js';
 import { getSignals } from './analyticsService.js';
 import { getVolumeOiAnalysis } from './analyticsService.js';
-import { toValidNumber } from './analyticsMath.js';
+import { snapshotDateKey, toValidNumber } from './analyticsMath.js';
 
 export const RESEARCH_STATUSES = new Set(['IGNORED', 'WATCHING', 'RESEARCHING']);
 const SEVERITY_WEIGHT = { extreme: 3, high: 2, medium: 1, low: 0 };
@@ -203,12 +203,15 @@ export async function updateResearchCaseStatus({ caseId, protocolId, snapshotDat
 
 async function getSnapshotDetails(snapshotDate, sql) {
   if (!snapshotDate) return new Map();
-  const [rows, analysis] = await Promise.all([
-    sql.query(`SELECT p.slug, s.volume_24h, s.open_interest, s.tvl, s.markets_count, s.data_source
-      FROM protocols p LEFT JOIN protocol_daily_snapshots s ON s.protocol_id = p.id AND s.snapshot_date = $1::date
-      WHERE p.is_active = TRUE ORDER BY p.slug`, [snapshotDate]),
+  const [allRows, analysis] = await Promise.all([
+    sql.query(`SELECT p.slug, s.snapshot_date, s.volume_24h, s.open_interest, s.tvl, s.markets_count, s.data_source
+      FROM protocols p LEFT JOIN protocol_daily_snapshots s ON s.protocol_id = p.id
+      WHERE p.is_active = TRUE ORDER BY p.slug, s.snapshot_date ASC NULLS FIRST`),
     getVolumeOiAnalysis(sql),
   ]);
+  // PostgreSQL DATE can arrive as a timezone-shifted JS Date. Select using
+  // the same UTC canonical key as Signals, never a browser/local date cast.
+  const rows = allRows.filter((row) => snapshotDateKey(row.snapshot_date) === snapshotDate);
   const paired = new Map((analysis.protocols || []).map((item) => [item.slug, item]));
   return new Map(rows.map((row) => {
     const item = paired.get(row.slug);

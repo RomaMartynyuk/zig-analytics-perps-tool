@@ -24,7 +24,8 @@
     "defillama_slug": "arcus",
     "slug_verified": true,
     "points_status": "not_live",
-    "notes": "Built by ex-dYdX team w/ Robinhood Crypto, on Robinhood Chain. TVL confirmed live on DefiLlama (~$20M)"
+    "notes": "Built by ex-dYdX team w/ Robinhood Crypto, on Robinhood Chain. TVL confirmed live on DefiLlama (~$20M)",
+    "external_research": { "website": "https://arcus.xyz", "docs": "https://docs.arcus.xyz" }
   },
   {
     "name": "Rise",
@@ -53,6 +54,7 @@
     "slug_verified": true,
     "points_status": "running",
     "notes": "Obsess over lowering cost per point",
+    "external_research": { "website": "https://variational.io" },
     "points_snapshot": {
       "weekday": "friday",
       "time": "15:00"
@@ -90,6 +92,7 @@
     "slug_verified": true,
     "points_status": "late_stage",
     "notes": "Confirmed live on DefiLlama",
+    "external_research": { "website": "https://pacifica.fi" },
     "points_snapshot": {
       "weekday": "thursday",
       "time": "00:00"
@@ -188,7 +191,8 @@
     "defillama_slug": "hyperliquid",
     "slug_verified": true,
     "points_status": "ended",
-    "notes": "Best perp dex ever"
+    "notes": "Best perp dex ever",
+    "external_research": { "website": "https://hyperliquid.xyz", "docs": "https://hyperliquid.gitbook.io" }
   },
   {
     "name": "Lighter",
@@ -198,6 +202,7 @@
     "slug_verified": true,
     "points_status": "ended",
     "notes": "Top-4 perp DEX by OI (~10% market share per Oct 2025 data). Confirmed live on DefiLlama",
+    "external_research": { "website": "https://lighter.xyz", "docs": "https://docs.lighter.xyz", "identityTerms": ["Lighter DEX", "LIT", "Robinhood Chain"] },
     "points_snapshot": {
       "weekday": "friday",
       "time": "13:00"
@@ -210,7 +215,8 @@
     "defillama_slug": "aster",
     "slug_verified": true,
     "points_status": "ended",
-    "notes": "Backed by YZi Labs, CZ-linked. Confirmed live on DefiLlama for TVL — but DefiLlama delisted Aster's PERP VOLUME data specifically over wash-trading concerns (volume was mirroring Binance almost exactly). Worth flagging before farming here"
+    "notes": "Backed by YZi Labs, CZ-linked. Confirmed live on DefiLlama for TVL — but DefiLlama delisted Aster's PERP VOLUME data specifically over wash-trading concerns (volume was mirroring Binance almost exactly). Worth flagging before farming here",
+    "external_research": { "website": "https://asterdex.com", "identityTerms": ["Aster DEX", "ASTER token", "$ASTER", "YZi", "USD1", "WLFI"] }
   },
   {
     "name": "edgeX",
@@ -219,7 +225,8 @@
     "defillama_slug": "edgex",
     "slug_verified": true,
     "points_status": "ended",
-    "notes": "Part of the perp DEX 'F4' (Hyperliquid/Aster/Lighter/edgeX, ~85% combined OI share). Confirmed live on DefiLlama"
+    "notes": "Part of the perp DEX 'F4' (Hyperliquid/Aster/Lighter/edgeX, ~85% combined OI share). Confirmed live on DefiLlama",
+    "external_research": { "website": "https://edgex.exchange", "docs": "https://docs.edgex.exchange", "identityTerms": ["edgeX V2", "edgeX Trading", "EDGE token", "Circle Arc"] }
   },
   {
     "name": "Grvt",
