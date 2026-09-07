@@ -9,6 +9,14 @@ import { formatTokenPrice, formatUSD } from '../lib/format';
 const FALLBACK_ASSUMPTIONS = { pointsMillions: 1_000, fdvMillions: 100, userAllocationPercent: 10 };
 const LIGHTER_POINTS_PER_WEEK = 65_000;
 const LIGHTER_TOKEN_ALLOCATION = 11_000_000;
+const NUMERIC_LOGO_PATTERNS = [
+  '01011010010110100101101001100101101001011010010110100110',
+  '73120486917312048691731204869173120486917312048691731204',
+  '20481016326412825651210242048101632641282565121024204810',
+].map((seed, patternIndex) => Array.from(
+  { length: 88 },
+  (_, row) => `${seed.slice((row * (patternIndex + 3)) % seed.length)}${seed}${seed}`,
+).join('\n'));
 
 function formatPoints(pointsMillions) {
   return pointsMillions >= 1_000
@@ -99,6 +107,16 @@ function AnimatedResult({ children, className }) {
     >
       {children}
     </motion.strong>
+  );
+}
+
+function NumericZigLogo() {
+  return (
+    <div className="points-numeric-logo" aria-hidden="true">
+      {NUMERIC_LOGO_PATTERNS.map((pattern, index) => (
+        <span className={`numeric-pattern numeric-pattern-${index + 1}`} key={index}>{pattern}</span>
+      ))}
+    </div>
   );
 }
 
@@ -222,6 +240,7 @@ export default function PredictionsPage() {
               />
             </motion.section>
             <motion.section className={`lighter-result-panel ${feedbackControl ? 'result-feedback' : ''}`} initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ ...projectTransition, delay: reduceMotion ? 0 : .16 }}>
+              <NumericZigLogo />
               <span className="result-eyebrow">Your weekly forecast</span>
               <AnimatedResult className="primary-point-result">{formatTokenPrice(lighterForecast)}</AnimatedResult>
               <small>per point · {lighterWeeks} weeks</small>
@@ -267,7 +286,7 @@ export default function PredictionsPage() {
           </div>
         </motion.section>
         <motion.section className={`prediction-results ${feedbackControl ? 'result-feedback' : ''}`} initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ ...projectTransition, delay: reduceMotion ? 0 : .12 }}>
-          <div className="prediction-result-glow" aria-hidden="true" />
+          <NumericZigLogo />
           <div className="primary-result-block">
             <span className="result-eyebrow">Your forecast</span>
             <AnimatedResult className="primary-point-result">{formatTokenPrice(userForecast)}</AnimatedResult>
