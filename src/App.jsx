@@ -248,7 +248,7 @@ export default function App() {
   const closeCase = () => { window.history.replaceState(null, '', window.location.pathname + window.location.search); setResearchCaseId(null); setActive('research'); };
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${active === 'predictions' ? 'points-lab-mode' : ''}`}>
       <Sidebar active={active === 'research-case' ? 'research' : active} onChange={changePage} />
 
       <main className="main">
