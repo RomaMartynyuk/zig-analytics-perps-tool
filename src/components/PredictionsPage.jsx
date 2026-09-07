@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import projects from '../data/projects.json';
 import ProjectIcon from './ProjectIcon';
 import { usePerpsTickers } from '../hooks/usePerpsTickers';
 import { formatTokenPrice, formatUSD } from '../lib/format';
+import { getLogoUrl } from '../lib/projectLogos';
 
 const FALLBACK_ASSUMPTIONS = { pointsMillions: 1_000, fdvMillions: 100, userAllocationPercent: 10 };
 const LIGHTER_POINTS_PER_WEEK = 65_000;
@@ -110,12 +111,30 @@ function AnimatedResult({ children, className }) {
   );
 }
 
-function NumericZigLogo() {
+function ProjectLogoBackdrop({ project }) {
+  const reduceMotion = useReducedMotion();
+  const logoUrl = getLogoUrl(project.name);
+  if (!logoUrl) return null;
+
   return (
-    <div className="points-numeric-logo" aria-hidden="true">
-      {NUMERIC_LOGO_PATTERNS.map((pattern, index) => (
-        <span className={`numeric-pattern numeric-pattern-${index + 1}`} key={index}>{pattern}</span>
-      ))}
+    <div className="points-project-logo-stage" aria-hidden="true">
+      <AnimatePresence initial={false} mode="sync">
+        <motion.div
+          className="points-project-logo-layer"
+          key={logoUrl}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: reduceMotion ? .08 : .3, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <div className="points-numeric-logo" style={{ '--project-logo': `url("${logoUrl}")` }}>
+            <img className="numeric-project-mark" src={logoUrl} alt="" />
+            {NUMERIC_LOGO_PATTERNS.map((pattern, index) => (
+              <span className={`numeric-pattern numeric-pattern-${index + 1}`} key={index}>{pattern}</span>
+            ))}
+          </div>
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }
@@ -206,12 +225,12 @@ export default function PredictionsPage() {
 
       return (
         <motion.article
-          className="prediction-workspace lighter-prediction-workspace"
-          key={project.name}
+          className={`prediction-workspace lighter-prediction-workspace ${feedbackControl ? 'logo-feedback' : ''}`}
           initial={projectEntrance}
           animate={{ opacity: 1, x: 0, y: 0 }}
           transition={projectTransition}
         >
+          <ProjectLogoBackdrop project={project} />
           <motion.div className="lighter-workspace-head" initial={reduceMotion ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...projectTransition, delay: reduceMotion ? 0 : .05 }}>
             <ProjectHeader project={project} index={index} />
             <span className="lighter-model-label">Dedicated campaign model</span>
@@ -240,7 +259,6 @@ export default function PredictionsPage() {
               />
             </motion.section>
             <motion.section className={`lighter-result-panel ${feedbackControl ? 'result-feedback' : ''}`} initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ ...projectTransition, delay: reduceMotion ? 0 : .16 }}>
-              <NumericZigLogo />
               <span className="result-eyebrow">Your weekly forecast</span>
               <AnimatedResult className="primary-point-result">{formatTokenPrice(lighterForecast)}</AnimatedResult>
               <small>per point · {lighterWeeks} weeks</small>
@@ -262,12 +280,12 @@ export default function PredictionsPage() {
 
     return (
       <motion.article
-        className="prediction-workspace standard-prediction-workspace"
-        key={project.name}
+        className={`prediction-workspace standard-prediction-workspace ${feedbackControl ? 'logo-feedback' : ''}`}
         initial={projectEntrance}
         animate={{ opacity: 1, x: 0, y: 0 }}
         transition={projectTransition}
       >
+        <ProjectLogoBackdrop project={project} />
         <motion.section className="prediction-parameters" initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ ...projectTransition, delay: reduceMotion ? 0 : .05 }}>
           <ProjectHeader project={project} index={index} />
           <div className="prediction-controls">
@@ -286,7 +304,6 @@ export default function PredictionsPage() {
           </div>
         </motion.section>
         <motion.section className={`prediction-results ${feedbackControl ? 'result-feedback' : ''}`} initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ ...projectTransition, delay: reduceMotion ? 0 : .12 }}>
-          <NumericZigLogo />
           <div className="primary-result-block">
             <span className="result-eyebrow">Your forecast</span>
             <AnimatedResult className="primary-point-result">{formatTokenPrice(userForecast)}</AnimatedResult>
