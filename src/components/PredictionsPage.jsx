@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import projects from '../data/projects.json';
@@ -58,11 +58,11 @@ function ProjectHeader({ project, index }) {
   );
 }
 
-function PersonalAllocation({ projectName, points, allocation, onChange }) {
+function PersonalAllocation({ projectName, points, allocation, onChange, onCommit, isFeedbackActive = false }) {
   const hasAllocation = Number.isFinite(allocation) && allocation > 0;
 
   return (
-    <div className="personal-allocation">
+    <div className={`personal-allocation parameter-row ${isFeedbackActive ? 'parameter-feedback' : ''}`}>
       <div>
         <span>Your allocation</span>
         <AnimatedResult className="allocation-result">{hasAllocation ? formatAllocation(allocation) : '—'}</AnimatedResult>
@@ -76,6 +76,8 @@ function PersonalAllocation({ projectName, points, allocation, onChange }) {
           inputMode="decimal"
           value={points}
           onChange={(event) => onChange(event.target.value)}
+          onBlur={onCommit}
+          onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
           placeholder="0"
           aria-label={`${projectName} your points`}
         />
@@ -107,6 +109,9 @@ export default function PredictionsPage() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [transitionDirection, setTransitionDirection] = useState('neutral');
   const [pageVisible, setPageVisible] = useState(() => document.visibilityState !== 'hidden');
+  const [draggingControl, setDraggingControl] = useState(null);
+  const [feedbackControl, setFeedbackControl] = useState(null);
+  const feedbackTimer = useRef(null);
   const reduceMotion = useReducedMotion();
   const { data: tickers } = usePerpsTickers();
   const litPrice = tickers.find((ticker) => ticker.ticker === 'LIT')?.price;
@@ -120,6 +125,8 @@ export default function PredictionsPage() {
     document.addEventListener('visibilitychange', updateVisibility);
     return () => document.removeEventListener('visibilitychange', updateVisibility);
   }, []);
+
+  useEffect(() => () => clearTimeout(feedbackTimer.current), []);
 
   function updateAssumption(project, field, value) {
     setAssumptions((current) => ({
@@ -135,8 +142,34 @@ export default function PredictionsPage() {
   function selectProject(index, direction = 'neutral') {
     const nextIndex = Math.max(0, Math.min(perps.length - 1, Number(index)));
     if (nextIndex === selectedIndex) return;
+    clearTimeout(feedbackTimer.current);
+    setDraggingControl(null);
+    setFeedbackControl(null);
     setTransitionDirection(direction);
     setSelectedIndex(nextIndex);
+  }
+
+  function triggerParameterFeedback(controlId) {
+    clearTimeout(feedbackTimer.current);
+    setFeedbackControl(controlId);
+    feedbackTimer.current = setTimeout(() => setFeedbackControl(null), 440);
+  }
+
+  function rangeInteractionProps(controlId) {
+    return {
+      onPointerDown: () => setDraggingControl(controlId),
+      onPointerUp: () => { setDraggingControl(null); triggerParameterFeedback(controlId); },
+      onPointerCancel: () => { setDraggingControl(null); triggerParameterFeedback(controlId); },
+      onKeyUp: (event) => {
+        if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(event.key)) {
+          triggerParameterFeedback(controlId);
+        }
+      },
+    };
+  }
+
+  function parameterClass(controlId) {
+    return `parameter-row ${draggingControl === controlId ? 'parameter-dragging' : ''} ${feedbackControl === controlId ? 'parameter-feedback' : ''}`;
   }
 
   const projectEntrance = reduceMotion
@@ -175,18 +208,20 @@ export default function PredictionsPage() {
                 <span>11M LIT × {formatTokenPrice(litPrice)}</span>
                 <strong>= {lighterValue == null ? '—' : formatUSD(lighterValue)}</strong>
               </div>
-              <label className="lighter-duration-control">
+              <label className={`lighter-duration-control ${parameterClass('lighter-duration')}`}>
                 <span>Campaign duration <strong>{lighterWeeks} weeks</strong></span>
-                <input type="range" min="4" max="60" step="1" value={lighterWeeks} onChange={(event) => setLighterWeeks(Number(event.target.value))} aria-label="Robinhood campaign duration in weeks" />
+                <input type="range" min="4" max="60" step="1" value={lighterWeeks} onChange={(event) => setLighterWeeks(Number(event.target.value))} aria-label="Robinhood campaign duration in weeks" {...rangeInteractionProps('lighter-duration')} />
               </label>
               <PersonalAllocation
                 projectName={project.name}
                 points={personalPoints}
                 allocation={personalAllocation}
                 onChange={(value) => updateOwnedPoints(project.name, value)}
+                onCommit={() => triggerParameterFeedback('lighter-owned-points')}
+                isFeedbackActive={feedbackControl === 'lighter-owned-points'}
               />
             </motion.section>
-            <motion.section className="lighter-result-panel" initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ ...projectTransition, delay: reduceMotion ? 0 : .16 }}>
+            <motion.section className={`lighter-result-panel ${feedbackControl ? 'result-feedback' : ''}`} initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ ...projectTransition, delay: reduceMotion ? 0 : .16 }}>
               <span className="result-eyebrow">Your weekly forecast</span>
               <AnimatedResult className="primary-point-result">{formatTokenPrice(lighterForecast)}</AnimatedResult>
               <small>per point · {lighterWeeks} weeks</small>
@@ -217,21 +252,21 @@ export default function PredictionsPage() {
         <motion.section className="prediction-parameters" initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ ...projectTransition, delay: reduceMotion ? 0 : .05 }}>
           <ProjectHeader project={project} index={index} />
           <div className="prediction-controls">
-            <label>
+            <label className={parameterClass(`${project.name}-points`)}>
               <span>Total points <strong>{formatPoints(values.pointsMillions)}</strong></span>
-              <input type="range" min="10" max="10000" step="10" value={values.pointsMillions} onChange={(event) => updateAssumption(project, 'pointsMillions', event.target.value)} aria-label={`${project.name} total points`} />
+              <input type="range" min="10" max="10000" step="10" value={values.pointsMillions} onChange={(event) => updateAssumption(project, 'pointsMillions', event.target.value)} aria-label={`${project.name} total points`} {...rangeInteractionProps(`${project.name}-points`)} />
             </label>
-            <label>
+            <label className={parameterClass(`${project.name}-fdv`)}>
               <span>Project FDV <strong>{formatFdv(values.fdvMillions)}</strong></span>
-              <input type="range" min="1" max="10000" step="1" value={values.fdvMillions} onChange={(event) => updateAssumption(project, 'fdvMillions', event.target.value)} aria-label={`${project.name} fully diluted valuation`} />
+              <input type="range" min="1" max="10000" step="1" value={values.fdvMillions} onChange={(event) => updateAssumption(project, 'fdvMillions', event.target.value)} aria-label={`${project.name} fully diluted valuation`} {...rangeInteractionProps(`${project.name}-fdv`)} />
             </label>
-            <label>
+            <label className={parameterClass(`${project.name}-allocation`)}>
               <span>Users&apos; FDV allocation <strong>{values.userAllocationPercent}%</strong></span>
-              <input type="range" min="1" max="100" step="1" value={values.userAllocationPercent} onChange={(event) => updateAssumption(project, 'userAllocationPercent', event.target.value)} aria-label={`${project.name} FDV allocated to users`} />
+              <input type="range" min="1" max="100" step="1" value={values.userAllocationPercent} onChange={(event) => updateAssumption(project, 'userAllocationPercent', event.target.value)} aria-label={`${project.name} FDV allocated to users`} {...rangeInteractionProps(`${project.name}-allocation`)} />
             </label>
           </div>
         </motion.section>
-        <motion.section className="prediction-results" initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ ...projectTransition, delay: reduceMotion ? 0 : .12 }}>
+        <motion.section className={`prediction-results ${feedbackControl ? 'result-feedback' : ''}`} initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ ...projectTransition, delay: reduceMotion ? 0 : .12 }}>
           <div className="prediction-result-glow" aria-hidden="true" />
           <div className="primary-result-block">
             <span className="result-eyebrow">Your forecast</span>
@@ -249,6 +284,8 @@ export default function PredictionsPage() {
               points={personalPoints}
               allocation={personalAllocation}
               onChange={(value) => updateOwnedPoints(project.name, value)}
+              onCommit={() => triggerParameterFeedback(`${project.name}-owned-points`)}
+              isFeedbackActive={feedbackControl === `${project.name}-owned-points`}
             />
           </div>
         </motion.section>
@@ -259,6 +296,12 @@ export default function PredictionsPage() {
 
   return (
     <section className={`predictions-page ${pageVisible ? '' : 'ambient-paused'}`}>
+      <div className="points-lab-atmosphere" aria-hidden="true">
+        <span className="points-atmosphere-layer points-atmosphere-plum" />
+        <span className="points-atmosphere-layer points-atmosphere-pink" />
+        <span className="points-atmosphere-layer points-atmosphere-violet" />
+        <span className="points-atmosphere-contours" />
+      </div>
       <motion.div className="prediction-lab-heading" initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? .08 : .54, delay: reduceMotion ? 0 : .04, ease: [0.22, 1, 0.36, 1] }}>
         <div>
           <span className="prediction-kicker">Farming signals · 01</span>
