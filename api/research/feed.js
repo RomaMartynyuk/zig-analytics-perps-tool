@@ -2,6 +2,7 @@ import { getDailyResearchFeed, updateResearchCaseStatus } from '../../server/res
 import { getResearchCaseDetail } from '../../server/researchCaseDetailService.js';
 import { getLatestExternalResearch, runExternalResearch } from '../../server/externalResearchService.js';
 import { validResearchCaseId } from '../../server/researchCasePersistence.js';
+import { buildAndPersistResearchSynthesis, getResearchSynthesisState } from '../../server/researchSynthesisService.js';
 
 function body(req) {
   if (!req.body) return {};
@@ -16,12 +17,14 @@ export default async function handler(req, res) {
         if (!validResearchCaseId(req.query.caseId)) return res.status(400).json({ error: 'Invalid research case id', reason: 'INVALID_CASE_ID' });
         const detail = await getResearchCaseDetail(req.query.caseId);
         if (detail?.unavailable) return res.status(410).json(detail);
-        return res.status(200).json({ ...detail, externalResearch: await getLatestExternalResearch(req.query.caseId) });
+        const [externalResearch, synthesis] = await Promise.all([getLatestExternalResearch(req.query.caseId), getResearchSynthesisState(req.query.caseId)]);
+        return res.status(200).json({ ...detail, externalResearch, synthesis });
       }
       return res.status(200).json(await getDailyResearchFeed({ limit: req.query.limit, status: req.query.status }));
     }
     if (req.method === 'POST') {
       const { action = 'external-research', caseId, window, refresh } = body(req);
+      if (action === 'build-synthesis' || action === 'refresh-synthesis') return res.status(200).json(await buildAndPersistResearchSynthesis({ caseId }));
       if (action !== 'external-research') return res.status(400).json({ error: 'Invalid research action' });
       return res.status(200).json(await runExternalResearch({ caseId, window, force: refresh === true }));
     }

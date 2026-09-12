@@ -1,0 +1,27 @@
+import { getSql } from '../server/db.js';
+import { getDailyResearchFeed } from '../server/researchFeedService.js';
+import { getPersistedResearchCase } from '../server/researchCasePersistence.js';
+import { getLatestExternalResearch } from '../server/externalResearchService.js';
+import { buildResearchSynthesis } from '../server/researchSynthesisService.js';
+
+const requested = process.argv[2]?.toLowerCase(); const sql = getSql();
+const feed = await getDailyResearchFeed({ limit: 20, status: 'all' }, sql);
+const item = feed.cases.find((candidate) => candidate.id.toLowerCase() === requested || candidate.protocol.slug.toLowerCase() === requested) || (!requested ? feed.cases[0] : null);
+if (!item) throw new Error(`No current persisted Research Case matched "${requested || ''}".`);
+const detail = await getPersistedResearchCase(item.id, sql);
+if (!detail) throw new Error(`Research Case is not persisted: ${item.id}`);
+const external = await getLatestExternalResearch(item.id, sql, { cacheableOnly: true });
+const synthesis = buildResearchSynthesis(detail, external);
+const print = (heading, entries, render = (entry) => entry.text) => { console.log(`\n${heading}`); if (!entries.length) console.log('None'); else entries.forEach((entry) => console.log(`- ${render(entry)}`)); };
+console.log('RESEARCH SYNTHESIS CHECK');
+console.log(`\nCASE\n${item.id}\n${item.protocol.name} · ${item.family} · ${item.snapshotDate}`);
+print('CONFIRMED FACTS', synthesis.confirmedFacts, (entry) => `${entry.text} [${entry.sourceType} · ${entry.sourceReference}]`);
+print('EXTERNAL FACTS', synthesis.externalFacts, (entry) => `${entry.text} [${entry.sourceType} · ${entry.relation} ${entry.distanceDays ?? ''}]`);
+print('POSSIBLE EXPLANATIONS', synthesis.hypotheses, (entry) => `${entry.id}: ${entry.text} [${entry.status}/${entry.confidence}]`);
+print('SUPPORTING EVIDENCE', synthesis.hypotheses, (entry) => `${entry.id}: ${entry.supportingEvidenceIds.join(', ')}`);
+print('CONTRADICTIONS', synthesis.hypotheses.filter((entry) => entry.contradictingEvidenceIds.length), (entry) => `${entry.id}: ${entry.contradictingEvidenceIds.join(', ')}`);
+print("WHAT WE DON'T KNOW", synthesis.unknowns);
+print('EVIDENCE GAPS', synthesis.evidenceGaps, (entry) => `${entry.code}: ${entry.detail}`);
+print('NEXT CHECKS', synthesis.nextChecks, (entry) => `${entry.scope}: ${entry.text}`);
+console.log(`\nRESEARCH CONCLUSION\n${synthesis.conclusion.confidence}: ${synthesis.conclusion.summary}`);
+console.log(`\nExternal run used: ${external?.id || 'none'} · Diagnostic did not persist a synthesis.`);

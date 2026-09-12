@@ -1931,3 +1931,21 @@
   .prediction-position { font-size: 8px; letter-spacing: .04em; }
   .prediction-result-glow,.lighter-result-panel::before { opacity: .5; }
 }
+.protocol-synthesis { grid-column: 1 / -1; }
+.synthesis-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.synthesis-heading p, .synthesis-body > section > p { color: var(--ink-soft); }
+.synthesis-heading button { border: 0; border-radius: 999px; padding: 10px 16px; background: var(--ink); color: white; font: inherit; font-weight: 800; cursor: pointer; }
+.synthesis-heading button:disabled { opacity: .55; cursor: wait; }
+.synthesis-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 20px; }
+.synthesis-body > section { padding: 16px; border: 1px solid var(--line); border-radius: 18px; }
+.synthesis-body h3 { margin: 0 0 12px; text-transform: uppercase; letter-spacing: .08em; font-size: .78rem; }
+.synthesis-facts, .synthesis-hypotheses { display: grid; gap: 9px; }
+.synthesis-facts article, .synthesis-hypotheses article { padding: 12px; border-radius: 13px; background: rgba(120, 35, 45, .045); }
+.synthesis-facts article > span, .synthesis-hypotheses article > span, .synthesis-conclusion > span { color: #6d2932; text-transform: uppercase; letter-spacing: .07em; font-size: .68rem; font-weight: 900; }
+.synthesis-facts p, .synthesis-hypotheses p, .synthesis-conclusion p { margin: 7px 0; }
+.synthesis-facts a, .synthesis-hypotheses small { display: block; color: var(--ink-soft); font-size: .72rem; }
+.synthesis-checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.synthesis-checks div { display: grid; gap: 8px; }
+.synthesis-checks span { padding-left: 12px; border-left: 2px solid #6d2932; }
+.synthesis-stale { display: flex; gap: 8px; margin-top: 14px; padding: 11px 14px; border-radius: 12px; background: rgba(120, 35, 45, .08); }
+@media (max-width: 760px) { .synthesis-heading { flex-direction: column; } .synthesis-body, .synthesis-checks { grid-template-columns: 1fr; } }

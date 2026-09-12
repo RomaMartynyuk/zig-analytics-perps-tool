@@ -18,6 +18,12 @@ export async function runExternalCaseResearch(caseId, window, refresh = false) {
   return response.json();
 }
 
+export async function buildResearchSynthesis(caseId, refresh = false) {
+  const response = await fetch('/api/research/feed', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: refresh ? 'refresh-synthesis' : 'build-synthesis', caseId }) });
+  if (!response.ok) { const body = await response.json().catch(() => ({})); throw new Error(body.error || 'Research synthesis is temporarily unavailable'); }
+  return response.json();
+}
+
 export function useResearchCaseData(caseId) {
   const [data, setData] = useState(null); const [loading, setLoading] = useState(true); const [error, setError] = useState(null); const [reloadKey, setReloadKey] = useState(0);
   useEffect(() => { if (!caseId) return undefined; const controller = new AbortController(); (async () => { setLoading(true); setError(null); try { const response = await fetch(`/api/research/feed?${new URLSearchParams({ caseId })}`, { signal: controller.signal }); if (response.status === 400) { setError('invalid'); return; } if (response.status === 404) { setError('not-found'); return; } if (response.status === 410) { setError('historical-unavailable'); return; } if (!response.ok) throw new Error(); setData(await response.json()); } catch (err) { if (err.name !== 'AbortError') setError('unavailable'); } finally { if (!controller.signal.aborted) setLoading(false); } })(); return () => controller.abort(); }, [caseId, reloadKey]);
