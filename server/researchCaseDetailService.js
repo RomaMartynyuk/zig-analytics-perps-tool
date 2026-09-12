@@ -93,6 +93,16 @@ function filteredQuestions(caseItem, metrics) {
   return { zigCanCheck: (caseItem.questions?.zigCanCheck || []).filter(keep), externalResearch: caseItem.questions?.externalResearch || [] };
 }
 
+function researchPeersFor(caseItem, rows) {
+  if (!(caseItem.family === 'leadership' || caseItem.family.includes('market_share'))) return [];
+  return rows
+    .map((row) => ({ id: row.id, slug: row.slug, name: row.name, value: toValidNumber(row.volume_24h) }))
+    .filter((row) => row.slug !== caseItem.protocol.slug && row.value != null)
+    .sort((left, right) => right.value - left.value || left.slug.localeCompare(right.slug))
+    .slice(0, 2)
+    .map(({ id, slug, name }) => ({ id, slug, name }));
+}
+
 export async function getResearchCaseDetail(caseId, sql = getSql()) {
   // V1 deliberately reconstructs only the latest canonical feed. Signals are
   // not yet historically persisted, so older case IDs must not be rebuilt
@@ -110,5 +120,5 @@ export async function getResearchCaseDetail(caseId, sql = getSql()) {
   const current = buildResearchCurrentMetrics(currentRows, caseItem.protocol.slug, caseItem.snapshotDate, capturedAt, totalProtocols);
   const history = buildResearchHistory(historicalRows, caseItem.protocol.slug, totalProtocols);
   const otherSignals = feed.cases.filter((item) => item.protocol.slug === caseItem.protocol.slug && item.id !== caseItem.id);
-  return { case: { ...caseItem, questions: filteredQuestions(caseItem, current.metrics) }, protocol: caseItem.protocol, snapshot: current.snapshot, metrics: current.metrics, peerContext: current.peerContext, coverage: current.coverage, history, relatedSignals: caseItem.relatedSignals, otherSignals, methodology: methodologyFor(caseItem, current.peerContext), sources: [...new Set([current.metrics?.volume24h?.source, current.metrics?.openInterest?.source, current.metrics?.tvl?.source, current.metrics?.marketsCount?.source].filter(Boolean))] };
+  return { case: { ...caseItem, questions: filteredQuestions(caseItem, current.metrics) }, protocol: caseItem.protocol, snapshot: current.snapshot, metrics: current.metrics, peerContext: current.peerContext, coverage: current.coverage, history, relatedSignals: caseItem.relatedSignals, otherSignals, researchPeers: researchPeersFor(caseItem, currentRows), methodology: methodologyFor(caseItem, current.peerContext), sources: [...new Set([current.metrics?.volume24h?.source, current.metrics?.openInterest?.source, current.metrics?.tvl?.source, current.metrics?.marketsCount?.source].filter(Boolean))] };
 }

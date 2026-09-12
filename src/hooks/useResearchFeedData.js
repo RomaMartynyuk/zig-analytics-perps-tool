@@ -13,7 +13,7 @@ export async function setResearchCaseStatus(caseId, status) {
 }
 
 export async function runExternalCaseResearch(caseId, window, refresh = false) {
-  const response = await fetch('/api/research/feed', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ caseId, window, refresh }) });
+  const response = await fetch('/api/research/feed', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'external-research', caseId, window, refresh }) });
   if (!response.ok) { const body = await response.json().catch(() => ({})); throw new Error(body.error || 'External research is temporarily unavailable'); }
   return response.json();
 }

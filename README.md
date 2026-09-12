@@ -392,25 +392,39 @@ npm run check:research-case -- edgex
 Each Protocol Research dossier now has an explicit **Research external
 context** action. It never runs on page load and never changes canonical
 snapshots, Signals, scores, or workflow status. Searches are anchored to the
-case’s canonical UTC snapshot date: `7D` searches from seven days before
-through one day after the snapshot; `30D` uses a thirty-day lookback.
+case’s canonical UTC snapshot date. The default lookback is period-aware:
+Current uses -7/+1 days, 7D uses -14/+1, 30D uses -35/+1, and 90D uses
+-100/+1. The optional 30D control uses an explicit -30/+1 window. Browser time
+and the current wall-clock date are not used.
 
 External findings are stored independently in `external_research_runs` and
-`external_research_findings` by migration `003_external_research.sql`. This
+`external_research_findings` by migrations `003_external_research.sql` and
+`004_external_research_audit_metadata.sql`. This
 makes a completed research run reproducible even though V1 does not persist
 full historical Signal payloads. Each finding stores only compact metadata,
 a factual summary, provenance, date, relevance explanation and its source URL
-— never a copied article body. A fresh click creates a new run; an existing
-run for the same case/window is reused unless **Refresh research** is chosen.
+— never a copied article body. Cache identity is case ID + window + research
+version. A fresh click reuses the matching completed/partial run unless
+**Refresh research** is chosen. Failed runs are retained for audit but are not
+treated as successful cache entries.
 
 The provider interface is server-only. Set `TAVILY_API_KEY` in Vercel to use
-Tavily search with richer source URLs. Without it, Zig uses a constrained
-Google News RSS fallback (six family-specific queries, five results each). The
-fallback is useful for availability but has weaker primary-source matching;
-low-confidence items are separated in the UI. No provider key reaches React.
+Tavily Search. Zig sends canonical `start_date` / `end_date` constraints and,
+where registry metadata exists, one official-domain-constrained query. Without
+the key the feature shows a clear provider-unavailable state; it does not ship
+mock findings or silently fall back to a lower-confidence production source.
+No provider key reaches React.
+
+Each run is limited to seven queries, five results per query, seven final
+findings, an eight-second request timeout, and one restrained retry for 429/5xx
+responses. Search-result snippets are normalized into short factual context;
+full article bodies are not fetched. Partial provider failure preserves
+successful findings, while a complete outage remains isolated from internal
+Zig evidence.
 
 The central `projects.json` registry can optionally supply
-`external_research.website`, `docs`, `x`, and `partners` URLs. Those domains
+`external_research.website`, `docs`, `x`/`xHandle`, `partners`, and
+`governance` URLs. Those domains
 are used for source classification, so adding a protocol remains a registry
 and integration task rather than a UI rewrite. Unknown signal families use the
 generic product-update / announcement / integration / incentives query set.
@@ -421,8 +435,12 @@ Run a real-data, read-only diagnostic (it does not persist a run):
 npm run check:external-research -- edgex
 ```
 
-The external layer reports verifiable events and possible relevance only. It
-does not claim an event caused a Zig observation.
+The external layer reports verified/reported events and possible relevance
+only. Confidence describes source evidence quality, not the probability that
+an event caused a Zig observation. V1 still cannot reconstruct an old Research
+Case after the canonical Signal snapshot advances; persisted external runs do
+retain the original case ID, protocol, snapshot, family, signal type, headline,
+period, and score for future Research Case persistence work.
 
 ## Next steps
 

@@ -19,7 +19,8 @@ export default async function handler(req, res) {
       return res.status(200).json(await getDailyResearchFeed({ limit: req.query.limit, status: req.query.status }));
     }
     if (req.method === 'POST') {
-      const { caseId, window, refresh } = body(req);
+      const { action = 'external-research', caseId, window, refresh } = body(req);
+      if (action !== 'external-research') return res.status(400).json({ error: 'Invalid research action' });
       return res.status(200).json(await runExternalResearch({ caseId, window, force: refresh === true }));
     }
     if (req.method !== 'PATCH') return res.status(405).json({ error: 'Method not allowed' });

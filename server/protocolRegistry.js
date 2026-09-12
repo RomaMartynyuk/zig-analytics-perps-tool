@@ -13,6 +13,7 @@ export function getConfiguredProtocols() {
       metricsKey: project.metrics_key || project.name,
       defillamaSlug: project.defillama_slug || null,
       isActive: project.is_active !== false,
+      externalResearch: project.external_research || {},
     }))
     .filter((project) => project.slug);
 }
