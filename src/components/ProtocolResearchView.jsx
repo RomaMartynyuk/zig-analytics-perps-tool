@@ -5,6 +5,7 @@ import { setResearchCaseStatus, useResearchCaseData } from '../hooks/useResearch
 import AnalyticsCredit from './AnalyticsCredit';
 import ExternalResearchSection from './ExternalResearchSection';
 import ResearchSynthesisSection from './ResearchSynthesisSection';
+import SignalHistorySection from './SignalHistorySection';
 
 const ACTIONS = [['IGNORED', 'Ignore'], ['WATCHING', 'Watch'], ['RESEARCHING', 'Research']];
 const HISTORY_METRICS = [['volume', 'Volume'], ['openInterest', 'Open Interest'], ['tvl', 'TVL'], ['volumeShare', 'Volume Share'], ['volumeOiRatio', 'Volume / OI']];
@@ -53,6 +54,7 @@ export default function ProtocolResearchView({ caseId, onBack }) {
       <section className="protocol-section protocol-history"><span className="analytics-module-kicker">What changed?</span><div className="protocol-history-controls"><div>{['7d', '30d', '90d'].map((value) => <button type="button" key={value} className={period === value ? 'is-active' : ''} onClick={() => setPeriod(value)}>{value.toUpperCase()}</button>)}</div><div>{HISTORY_METRICS.map(([value, label]) => <button type="button" key={value} className={historyMetric === value ? 'is-active' : ''} onClick={() => setHistoryMetric(value)}>{label}</button>)}</div></div><HistoryChart detail={data} period={period} metric={historyMetric} /><p className="protocol-history-progress">Protocol metric coverage: Volume {history.periods[period].protocolMetricDays.volume}/{history.periods[period].requiredDays} · OI {history.periods[period].protocolMetricDays.openInterest}/{history.periods[period].requiredDays} · TVL {history.periods[period].protocolMetricDays.tvl}/{history.periods[period].requiredDays}</p></section>
       <section className="protocol-section protocol-related"><span className="analytics-module-kicker">Related observations</span>{data.relatedSignals.length ? data.relatedSignals.map((item) => <details key={item.id}><summary>{item.title} · score {item.score}</summary><span>{item.evidence?.map((evidence) => `${evidence.label}: ${evidence.formatted}`).join(' · ') || item.summary}</span></details>) : <p>No related observations for this case.</p>}{data.otherSignals.length > 0 && <><h3>Other active signals</h3>{data.otherSignals.map((item) => <p key={item.id}><b>{item.headline}</b> · {item.score}/100</p>)}</>}</section>
       <section className="protocol-section protocol-questions"><span className="analytics-module-kicker">Questions to investigate</span><div><strong>Zig can check</strong>{caseItem.questions.zigCanCheck.map((item) => <span key={item}>{item}</span>)}</div><div><strong>External research</strong>{caseItem.questions.externalResearch.map((item) => <span key={item}>{item}</span>)}</div></section>
+      <SignalHistorySection caseItem={caseItem} />
       <ExternalResearchSection caseItem={caseItem} initialResearch={data.externalResearch} onComplete={refetch} />
       <ResearchSynthesisSection caseItem={caseItem} initialState={data.synthesis} />
     </div><AnalyticsCredit />

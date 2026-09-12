@@ -9,6 +9,7 @@ export const SIGNAL_CONFIG = {
   highSeverityScore: 84,
   extremeSeverityScore: 95,
 };
+export const SIGNAL_ENGINE_VERSION = 'v2';
 
 function median(values) {
   const ordered = values.filter(Number.isFinite).sort((a, b) => a - b);

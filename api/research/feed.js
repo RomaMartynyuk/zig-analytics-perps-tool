@@ -3,6 +3,7 @@ import { getResearchCaseDetail } from '../../server/researchCaseDetailService.js
 import { getLatestExternalResearch, runExternalResearch } from '../../server/externalResearchService.js';
 import { validResearchCaseId } from '../../server/researchCasePersistence.js';
 import { buildAndPersistResearchSynthesis, getResearchSynthesisState } from '../../server/researchSynthesisService.js';
+import { getSignalHistory } from '../../server/signalHistoryService.js';
 
 function body(req) {
   if (!req.body) return {};
@@ -13,6 +14,7 @@ function body(req) {
 export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
+      if (req.query.action === 'signal-history') return res.status(200).json(await getSignalHistory({ caseId: req.query.caseId, period: req.query.period || '7d' }));
       if (req.query.caseId) {
         if (!validResearchCaseId(req.query.caseId)) return res.status(400).json({ error: 'Invalid research case id', reason: 'INVALID_CASE_ID' });
         const detail = await getResearchCaseDetail(req.query.caseId);

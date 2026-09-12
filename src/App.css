@@ -1932,6 +1932,14 @@
   .prediction-result-glow,.lighter-result-panel::before { opacity: .5; }
 }
 .protocol-synthesis { grid-column: 1 / -1; }
+.protocol-signal-history { grid-column: 1 / -1; }
+.signal-history-head { display:flex;justify-content:space-between;gap:18px;align-items:flex-start; }
+.signal-history-head h2 { margin:6px 0; }.signal-history-head p{margin:0;color:var(--ink-soft)}
+.signal-history-head>div:last-child{display:flex;gap:6px}.signal-history-head button{border:0;border-radius:999px;padding:7px 11px;font:inherit;font-weight:800}.signal-history-head button.is-active{background:var(--ink);color:#fff}
+.signal-history-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}.signal-history-summary span{display:grid;gap:4px;padding:12px;border:1px solid var(--line);border-radius:12px;color:var(--ink-soft)}.signal-history-summary b{color:var(--ink)}
+.signal-history-timeline{height:160px;display:flex;align-items:flex-end;gap:5px;padding:18px 8px 28px;border-bottom:1px solid var(--line)}.signal-history-observation{height:100%;flex:1;min-width:4px;display:flex;align-items:flex-end;position:relative}.signal-history-observation i{display:block;width:100%;border-radius:5px 5px 2px 2px;background:#6d2932}.signal-history-observation.state-absent i{background:#aaa293}.signal-history-observation.state-not_evaluable i{background:transparent;border-top:2px dashed #aaa293}.signal-history-observation span{position:absolute;top:calc(100% + 7px);font-size:8px;white-space:nowrap;left:50%;transform:translateX(-50%)}
+.signal-history-loading{display:grid;gap:10px;margin-top:18px}.signal-history-loading i{height:28px;background:var(--line);border-radius:9px}
+@media(max-width:720px){.signal-history-head{flex-direction:column}.signal-history-summary{grid-template-columns:1fr 1fr}.signal-history-timeline{overflow-x:auto}.signal-history-observation{min-width:18px}}
 .synthesis-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
 .synthesis-heading p, .synthesis-body > section > p { color: var(--ink-soft); }
 .synthesis-heading button { border: 0; border-radius: 999px; padding: 10px 16px; background: var(--ink); color: white; font: inherit; font-weight: 800; cursor: pointer; }

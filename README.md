@@ -526,6 +526,38 @@ npm run check:research-synthesis -- edgex
 The diagnostic uses retained External Research only. It does not call Tavily,
 invent external evidence, or persist a synthesis.
 
+### Signal History
+
+Signal History retrospectively evaluates the current Signal Engine against
+real stored canonical daily snapshots. It answers what engine version `v2`
+would have observed on each historical UTC date; it does not claim that Zig
+emitted those signals live at the time. A semantic series uses
+`protocolSlug:signalFamily`, matching production family deduplication, while a
+PRESENT observation retains the winning detector `signalType`.
+
+Each canonical snapshot is classified as `PRESENT`, `ABSENT`, or
+`NOT_EVALUABLE`. ABSENT means the detector inputs and peer sample were valid
+but the semantic signal did not survive production thresholds/deduplication.
+Missing metrics, insufficient peers, or insufficient prior history are not
+evaluable. Missing calendar days remain gaps and never become absence.
+Presence rate therefore uses evaluable snapshots only.
+
+Historical evaluation is always capped at the immutable Research Case anchor
+date, so later snapshots cannot leak into old peer baselines, shares, growth,
+or scores. Existing historical rows are retained even if a protocol is now
+inactive, matching Zig's recorded-history policy. Evaluations are loaded in
+batch and cached on demand in `signal_observations`; engine-version changes
+create separate rows instead of overwriting earlier evaluations. Migration
+`007_signal_history.sql` creates this cache. No migration-time mass backfill is
+performed.
+
+```bash
+npm run check:signal-history -- edgex --period=30d
+```
+
+Signal Lifecycle is intentionally not part of this feature. A later version
+can derive lifecycle semantics from these three-state observations.
+
 ## Next steps
 
 - Verify on the live deployment how many of the 16 registered exchanges
