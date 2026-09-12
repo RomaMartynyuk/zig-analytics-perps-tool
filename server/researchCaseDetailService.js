@@ -1,6 +1,7 @@
 import { getSql } from './db.js';
 import { buildGrowthMatrix, buildMarketShareHistory, buildVolumeOiAnalysis, continuousRecentDates, median, percentileMidRank, snapshotDateKey, toValidNumber } from './analyticsMath.js';
 import { getDailyResearchFeed } from './researchFeedService.js';
+import { getPersistedResearchCase, validResearchCaseId } from './researchCasePersistence.js';
 
 const PERIODS = ['7d', '30d', '90d'];
 
@@ -15,7 +16,6 @@ export function buildResearchCurrentMetrics(rows, protocolSlug, snapshotDate, ca
   const selected = normalized.find((row) => row.slug === protocolSlug) || null;
   if (!selected) return { snapshot: { date: snapshotDate, capturedAt }, metrics: null, peerContext: {} };
   const volumeOi = buildVolumeOiAnalysis(normalized, { snapshotDate, capturedAt, totalProtocols });
-  const paired = volumeOi.protocols.find((item) => item.slug === protocolSlug) || null;
   const volumeValues = normalized.map((row) => row.volume_24h).filter(Number.isFinite);
   const oiValues = normalized.map((row) => row.open_interest).filter(Number.isFinite);
   const tvlValues = normalized.map((row) => row.tvl).filter(Number.isFinite);
@@ -103,22 +103,34 @@ function researchPeersFor(caseItem, rows) {
     .map(({ id, slug, name }) => ({ id, slug, name }));
 }
 
+export function buildResearchCaseDetailPayload({ caseItem, feedCases, historicalRows, totalProtocols }) {
+  const caseDate = snapshotDateKey(caseItem.snapshotDate);
+  const anchoredRows = historicalRows.filter((row) => {
+    const date = snapshotDateKey(row.snapshot_date);
+    return date && date <= caseDate;
+  });
+  const currentRows = anchoredRows.filter((row) => snapshotDateKey(row.snapshot_date) === caseDate);
+  const capturedAt = currentRows.map((row) => row.captured_at).filter(Boolean).sort().at(-1) || null;
+  const current = buildResearchCurrentMetrics(currentRows, caseItem.protocol.slug, caseDate, capturedAt, totalProtocols);
+  const history = buildResearchHistory(anchoredRows, caseItem.protocol.slug, totalProtocols);
+  const otherSignals = feedCases.filter((item) => item.protocol.slug === caseItem.protocol.slug && item.id !== caseItem.id);
+  return { case: { ...caseItem, questions: filteredQuestions(caseItem, current.metrics) }, protocol: caseItem.protocol, snapshot: current.snapshot, metrics: current.metrics, peerContext: current.peerContext, coverage: current.coverage, history, relatedSignals: caseItem.relatedSignals, otherSignals, researchPeers: researchPeersFor(caseItem, currentRows), methodology: methodologyFor(caseItem, current.peerContext), sources: [...new Set([current.metrics?.volume24h?.source, current.metrics?.openInterest?.source, current.metrics?.tvl?.source, current.metrics?.marketsCount?.source].filter(Boolean))], caseSource: 'CURRENT_RECONSTRUCTION', casePayloadVersion: null };
+}
+
 export async function getResearchCaseDetail(caseId, sql = getSql()) {
-  // V1 deliberately reconstructs only the latest canonical feed. Signals are
-  // not yet historically persisted, so older case IDs must not be rebuilt
-  // with today’s evidence.
+  if (!validResearchCaseId(caseId)) return { unavailable: true, reason: 'INVALID_CASE_ID', caseId };
+  const persisted = await getPersistedResearchCase(caseId, sql);
+  if (persisted) return persisted;
   const feed = await getDailyResearchFeed({ limit: 20, status: 'all' }, sql);
   const caseItem = feed.cases.find((item) => item.id === caseId);
-  if (!caseItem) return null;
+  if (!caseItem) return { unavailable: true, reason: 'HISTORICAL_CASE_UNAVAILABLE', caseId, snapshotDate: caseId.split(':')[1] || null };
+  // Feed persistence may have stored the case during this request. Persisted
+  // evidence wins even on the first open.
+  const newlyPersisted = await getPersistedResearchCase(caseId, sql);
+  if (newlyPersisted) return newlyPersisted;
   const [totalRows, historicalRows] = await Promise.all([
     sql`SELECT COUNT(*)::int AS count FROM protocols WHERE is_active = TRUE`,
     sql.query(`SELECT p.id, p.slug, p.name, s.snapshot_date, s.captured_at, s.volume_24h, s.open_interest, s.tvl, s.markets_count, s.data_source FROM protocols p JOIN protocol_daily_snapshots s ON s.protocol_id = p.id WHERE p.is_active = TRUE ORDER BY s.snapshot_date ASC, p.slug ASC`),
   ]);
-  const totalProtocols = Number(totalRows[0]?.count || 0);
-  const currentRows = historicalRows.filter((row) => snapshotDateKey(row.snapshot_date) === caseItem.snapshotDate);
-  const capturedAt = currentRows.map((row) => row.captured_at).filter(Boolean).sort().at(-1) || null;
-  const current = buildResearchCurrentMetrics(currentRows, caseItem.protocol.slug, caseItem.snapshotDate, capturedAt, totalProtocols);
-  const history = buildResearchHistory(historicalRows, caseItem.protocol.slug, totalProtocols);
-  const otherSignals = feed.cases.filter((item) => item.protocol.slug === caseItem.protocol.slug && item.id !== caseItem.id);
-  return { case: { ...caseItem, questions: filteredQuestions(caseItem, current.metrics) }, protocol: caseItem.protocol, snapshot: current.snapshot, metrics: current.metrics, peerContext: current.peerContext, coverage: current.coverage, history, relatedSignals: caseItem.relatedSignals, otherSignals, researchPeers: researchPeersFor(caseItem, currentRows), methodology: methodologyFor(caseItem, current.peerContext), sources: [...new Set([current.metrics?.volume24h?.source, current.metrics?.openInterest?.source, current.metrics?.tvl?.source, current.metrics?.marketsCount?.source].filter(Boolean))] };
+  return buildResearchCaseDetailPayload({ caseItem, feedCases: feed.cases, historicalRows, totalProtocols: Number(totalRows[0]?.count || 0) });
 }

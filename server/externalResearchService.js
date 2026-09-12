@@ -3,7 +3,7 @@ import { getSql } from './db.js';
 import { getConfiguredProtocols } from './protocolRegistry.js';
 import { getResearchCaseDetail } from './researchCaseDetailService.js';
 
-export const EXTERNAL_RESEARCH_VERSION = 'v2';
+export const EXTERNAL_RESEARCH_VERSION = 'v3';
 export const RESEARCH_WINDOWS = new Set(['default', '7d', '30d']);
 export const EXTERNAL_RESEARCH_LIMITS = Object.freeze({ maxQueriesPerRun: 7, maxResultsPerQuery: 5, maxPageFetches: 0, maxFinalFindings: 7, requestTimeoutMs: 8_000, maxRetries: 1 });
 
@@ -65,7 +65,15 @@ const MEDIA_DOMAINS = ['coindesk.com', 'theblock.co', 'decrypt.co', 'blockworks.
 const COMMUNITY_DOMAINS = ['reddit.com', 'medium.com', 'mirror.xyz'];
 const CAUSAL_LANGUAGE = /\b(caused|caused the increase|because of|explains the spike|resulted in)\b/i;
 
-function canonicalDate(value) { const result = String(value || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(result) && !Number.isNaN(Date.parse(`${result}T00:00:00.000Z`)) ? result : null; }
+// Neon can return PostgreSQL DATE columns as native Date objects. Normalize
+// both driver representations without substituting the current date.
+function canonicalDate(value) {
+  if (value == null) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
+  const text = String(value);
+  const result = /^\d{4}-\d{2}-\d{2}/.test(text) ? text.slice(0, 10) : null;
+  return result && !Number.isNaN(Date.parse(`${result}T00:00:00.000Z`)) ? result : null;
+}
 function addDays(date, days) { const key = canonicalDate(date); if (!key) throw new Error('Invalid canonical snapshot date'); const value = new Date(`${key}T00:00:00.000Z`); value.setUTCDate(value.getUTCDate() + days); return value.toISOString().slice(0, 10); }
 function signedDayDistance(from, to) { const left = canonicalDate(from); const right = canonicalDate(to); if (!left || !right) return null; return Math.round((Date.parse(`${left}T00:00:00.000Z`) - Date.parse(`${right}T00:00:00.000Z`)) / 86_400_000); }
 
@@ -109,7 +117,7 @@ export function generateExternalQueries(context, metadata = {}) {
   const topics = topicsForFamily(context.case.family).slice(0, 6); const month = monthWords(context.window.from, context.window.to); const domains = officialDomains(metadata);
   const queries = topics.map((topic, index) => ({ topic, query: `"${context.protocol.name}" ${topic} ${month}`, scope: index === 0 && domains.length ? 'official' : 'web', includeDomains: index === 0 && domains.length ? domains : [] }));
   if (['market_share', 'leadership'].includes(familyGroup(context.case.family)) && context.competitors?.length) {
-    const peer = context.competitors[0]; queries.push({ topic: 'competitor event', query: `"${peer.name}" outage incident product update ${month}`, scope: 'competitor', competitorSlug: peer.slug, includeDomains: [] });
+    const peer = context.competitors[0]; queries.push({ topic: 'competitor event', query: `"${peer.name}" outage incident product update ${month}`, scope: 'competitor', competitorSlug: peer.slug, competitorName: peer.name, includeDomains: [] });
   }
   return queries.slice(0, EXTERNAL_RESEARCH_LIMITS.maxQueriesPerRun);
 }
@@ -149,19 +157,28 @@ export function externalResearchRunStatus(succeededQueries, failedQueries) {
 }
 
 export async function executeExternalResearchPlan({ queryRows, provider, context, metadata = {} }) {
-  let raw = []; const partialErrors = []; let succeededQueries = 0;
+  let raw = []; const partialErrors = []; const queryDiagnostics = []; let succeededQueries = 0;
   if (provider.configured === false) partialErrors.push({ query: null, error: 'TAVILY_API_KEY is not configured' });
   else {
-    const settled = await Promise.allSettled(queryRows.map((item) => provider.search(item.query, { from: context.window.from, to: context.window.to, limit: EXTERNAL_RESEARCH_LIMITS.maxResultsPerQuery, includeDomains: item.includeDomains })));
+    const settled = await Promise.allSettled(queryRows.map(async (item) => {
+      const startedAt = Date.now();
+      const results = await provider.search(item.query, { from: context.window.from, to: context.window.to, limit: EXTERNAL_RESEARCH_LIMITS.maxResultsPerQuery, includeDomains: item.includeDomains });
+      return { results, durationMs: Date.now() - startedAt };
+    }));
     settled.forEach((result, index) => {
       if (result.status === 'fulfilled') {
         succeededQueries += 1;
-        raw.push(...result.value.map((candidate) => ({ ...candidate, topic: queryRows[index].topic, scope: queryRows[index].scope })));
-      } else partialErrors.push({ query: queryRows[index].query, error: String(result.reason?.message || result.reason) });
+        queryDiagnostics.push({ ...queryRows[index], resultCount: result.value.results.length, durationMs: result.value.durationMs, status: 'COMPLETED' });
+        raw.push(...result.value.results.map((candidate) => ({ ...candidate, topic: queryRows[index].topic, scope: queryRows[index].scope, competitorSlug: queryRows[index].competitorSlug || null, competitorName: queryRows[index].competitorName || null })));
+      } else {
+        const error = String(result.reason?.message || result.reason);
+        partialErrors.push({ query: queryRows[index].query, error });
+        queryDiagnostics.push({ ...queryRows[index], resultCount: 0, durationMs: null, status: 'FAILED', error });
+      }
     });
   }
   const normalized = normalizeExternalResults(raw, context, metadata);
-  return { raw, partialErrors, succeededQueries, status: externalResearchRunStatus(succeededQueries, partialErrors.length), ...normalized };
+  return { raw, partialErrors, queryDiagnostics, succeededQueries, status: externalResearchRunStatus(succeededQueries, partialErrors.length), ...normalized };
 }
 
 export function classifyExternalSource(result, metadata = {}) {
@@ -187,6 +204,46 @@ function findingIsBetter(candidate, current) { return (SOURCE_QUALITY[candidate.
 function possibleRelevance(topic, distance) { const timing = distance == null ? 'The publication date is unavailable' : distance === 0 ? 'It was published on the canonical snapshot date' : `It was published ${Math.abs(distance)} day${Math.abs(distance) === 1 ? '' : 's'} ${distance < 0 ? 'before' : 'after'} the canonical snapshot`; return `${topic[0].toUpperCase()}${topic.slice(1)} matches this Research Case topic. ${timing}. It provides context worth investigating; it does not establish causation.`; }
 function duplicateEvent(left, right) { if (left.url === right.url) return true; if (left.category !== right.category) return false; const dateDistance = left.publishedAt && right.publishedAt ? Math.abs(signedDayDistance(left.publishedAt, right.publishedAt)) : 0; return dateDistance <= 3 && titleSimilarity(left.title, right.title) >= 0.62; }
 
+function hasBoundedTerm(value, term, caseSensitive = false) {
+  return new RegExp(`(^|[^a-z0-9])${escapeRegExp(term)}(?=$|[^a-z0-9])`, caseSensitive ? '' : 'i').test(value);
+}
+
+function identityMatchScore(title, summary, terms) {
+  let best = 0;
+  for (const rawTerm of [...new Set(terms.map(stripText).filter(Boolean))]) {
+    const compact = rawTerm.replace(/[^a-z0-9]/gi, '');
+    if (compact.length <= 4) {
+      // Short aliases frequently collide with ordinary prose. Require a
+      // case-preserved title token (or explicit $SYMBOL), never a snippet hit.
+      if (hasBoundedTerm(title, rawTerm, true) || new RegExp(`\\$${escapeRegExp(rawTerm)}(?=$|[^a-z0-9])`, 'i').test(title)) best = Math.max(best, 0.9);
+      continue;
+    }
+    if (hasBoundedTerm(title, rawTerm)) best = Math.max(best, 1);
+    else if (hasBoundedTerm(summary, rawTerm)) best = Math.max(best, 0.72);
+  }
+  return best;
+}
+
+const EVENT_ACTION = /announc|launch|introduc|roll(?:ed|s)? out|release|list(?:ed|ing|s)?|integrat|partner|upgrad|updat|open(?:ed|s)?|begin|end|suspend|outage|incident|competition|campaign|rebate/i;
+const PRODUCT_CONTEXT = /protocol|exchange|dex|product|platform|perpetual|perps?|trading|market|liquidity|volume|open interest|margin|collateral|leverage|fee|api|sdk|mainnet|testnet|points?/i;
+
+function topicMatchScore(title, summary, topic) {
+  const combined = `${title} ${summary}`;
+  if (topic === 'competitor event') return EVENT_ACTION.test(combined) && PRODUCT_CONTEXT.test(combined) ? (EVENT_ACTION.test(title) ? 1 : 0.78) : 0;
+  if (topic === 'product update' || topic === 'announcement') {
+    if (!(EVENT_ACTION.test(combined) && PRODUCT_CONTEXT.test(combined))) return 0;
+    return EVENT_ACTION.test(title) && PRODUCT_CONTEXT.test(title) ? 1 : 0.78;
+  }
+  const pattern = TOPIC_PATTERNS[topic];
+  if (!pattern?.test(combined)) return 0;
+  return pattern.test(title) ? 1 : 0.78;
+}
+
+function lowInformationPage(value) {
+  const path = safeExternalUrl(value)?.pathname?.replace(/\/+$/, '') || '';
+  return !path || /^\/(?:currencies|price|token)\/[^/]+$/i.test(path) || /^\/(?:search|tag|category)(?:\/|$)/i.test(path);
+}
+
 export function normalizeExternalResults(rawResults, context, metadata = {}) {
   const findings = []; const suppressed = [];
   for (const raw of rawResults) {
@@ -195,21 +252,24 @@ export function normalizeExternalResults(rawResults, context, metadata = {}) {
     if (!url || !title) { suppressed.push({ title: title || 'Untitled', url: raw.url || null, reason: 'malformed_result' }); continue; }
     const publishedKey = canonicalDate(parsedPublished);
     if (publishedKey && (publishedKey < context.window.from || publishedKey > context.window.to)) { suppressed.push({ title, url, reason: 'outside_research_window' }); continue; }
-    const text = `${title} ${summary}`; const aliases = [context.protocol.name, context.protocol.slug, ...(metadata.identityTerms || [])].filter(Boolean);
-    const protocolMatch = aliases.some((term) => new RegExp(`(^|[^a-z0-9])${escapeRegExp(term)}(?=$|[^a-z0-9])`, 'i').test(text));
-    if (!protocolMatch && raw.scope !== 'competitor') { suppressed.push({ title, url, reason: 'protocol_mismatch' }); continue; }
-    const topicPattern = TOPIC_PATTERNS[raw.topic] || (raw.topic === 'competitor event' ? /outage|incident|product|update/i : /announce|launch|update|release/i);
-    if (!topicPattern.test(text)) { suppressed.push({ title, url, reason: 'topic_mismatch' }); continue; }
+    const text = `${title} ${summary}`;
+    const targetTerms = raw.scope === 'competitor' ? [raw.competitorName, raw.competitorSlug] : [context.protocol.name, context.protocol.slug, ...(metadata.identityTerms || [])];
+    const protocolScore = identityMatchScore(title, summary, targetTerms.filter(Boolean));
+    if (protocolScore < 0.72) { suppressed.push({ title, url, reason: raw.scope === 'competitor' ? 'competitor_mismatch' : 'protocol_mismatch', protocolScore }); continue; }
+    if (!PRODUCT_CONTEXT.test(text)) { suppressed.push({ title, url, reason: 'market_context_mismatch', protocolScore }); continue; }
+    const topicScore = topicMatchScore(title, summary, raw.topic);
+    if (topicScore < 0.75) { suppressed.push({ title, url, reason: 'topic_mismatch', protocolScore, topicScore }); continue; }
     const sourceType = classifyExternalSource(raw, metadata); const distance = parsedPublished ? signedDayDistance(parsedPublished, context.case.snapshotDate) : null; const specificity = specificityScore(text);
-    const relevanceScore = Math.round(((SOURCE_QUALITY[sourceType] || 0.3) * 0.34 + temporalScore(distance) * 0.26 + 1 * 0.2 + 1 * 0.12 + specificity * 0.08) * 100);
-    const cappedScore = [SOURCE_TYPES.OTHER, SOURCE_TYPES.COMMUNITY].includes(sourceType) ? Math.min(62, relevanceScore) : relevanceScore;
-    if (cappedScore < 52) { suppressed.push({ title, url, reason: 'low_relevance' }); continue; }
+    if ([SOURCE_TYPES.OTHER, SOURCE_TYPES.COMMUNITY].includes(sourceType)) { suppressed.push({ title, url, reason: 'low_source_confidence', protocolScore, topicScore, sourceType }); continue; }
+    if (lowInformationPage(url) && sourceType !== SOURCE_TYPES.OFFICIAL_PROTOCOL) { suppressed.push({ title, url, reason: 'low_information_page', protocolScore, topicScore, sourceType }); continue; }
+    const relevanceScore = Math.round(((SOURCE_QUALITY[sourceType] || 0.3) * 0.28 + temporalScore(distance) * 0.16 + protocolScore * 0.24 + topicScore * 0.24 + specificity * 0.08) * 100);
+    if (relevanceScore < (raw.scope === 'competitor' ? 76 : 66)) { suppressed.push({ title, url, reason: 'low_relevance', protocolScore, topicScore, sourceType, relevanceScore }); continue; }
     const topic = raw.topic || 'external event'; const sourceName = raw.sourceName || hostname(url) || 'Web source';
     const finding = {
       id: null, category: raw.scope === 'competitor' ? 'COMPETITOR_EVENT' : categoryFor(text, topic), title,
       source: { type: sourceType, name: sourceName, url }, sourceType, sourceName, url,
       publishedAt: parsedPublished, eventDate: null, factualSummary: summary || 'The source title and publication metadata are available at the linked source.', summary: summary || 'The source title and publication metadata are available at the linked source.',
-      relevanceScore: cappedScore, relevance: cappedScore, confidence: confidenceFor(sourceType), temporalDistanceDays: distance,
+      relevanceScore, relevance: relevanceScore, confidence: confidenceFor(sourceType), temporalDistanceDays: distance,
       relevanceReasons: [sourceType === SOURCE_TYPES.OFFICIAL_PROTOCOL ? 'Official protocol source' : `${sourceType.replaceAll('_', ' ').toLowerCase()} source`, distance == null ? 'Publication date unavailable' : `Published ${Math.abs(distance)} day${Math.abs(distance) === 1 ? '' : 's'} from the canonical snapshot`, `Direct match to ${topic} topic`],
       possibleRelevance: possibleRelevance(topic, distance), supportingSources: [], causalClaim: false,
     };
@@ -222,9 +282,15 @@ export function normalizeExternalResults(rawResults, context, metadata = {}) {
       findings[duplicateIndex] = primary; suppressed.push({ title: supporting.title, url: supporting.url, reason: 'duplicate_event' });
     } else findings.push(finding);
   }
-  findings.sort((left, right) => right.relevanceScore - left.relevanceScore || String(left.title).localeCompare(String(right.title)));
-  const selected = findings.slice(0, EXTERNAL_RESEARCH_LIMITS.maxFinalFindings);
-  findings.slice(EXTERNAL_RESEARCH_LIMITS.maxFinalFindings).forEach((item) => suppressed.push({ title: item.title, url: item.url, reason: 'result_limit' }));
+  findings.sort((left, right) => Number(left.category === 'COMPETITOR_EVENT') - Number(right.category === 'COMPETITOR_EVENT') || right.relevanceScore - left.relevanceScore || String(left.title).localeCompare(String(right.title)));
+  let competitorSelected = false;
+  const gatedFindings = findings.filter((item) => {
+    if (item.category !== 'COMPETITOR_EVENT') return true;
+    if (competitorSelected) { suppressed.push({ title: item.title, url: item.url, reason: 'competitor_result_limit' }); return false; }
+    competitorSelected = true; return true;
+  });
+  const selected = gatedFindings.slice(0, EXTERNAL_RESEARCH_LIMITS.maxFinalFindings);
+  gatedFindings.slice(EXTERNAL_RESEARCH_LIMITS.maxFinalFindings).forEach((item) => suppressed.push({ title: item.title, url: item.url, reason: 'result_limit' }));
   return { findings: selected, lowConfidence: selected.filter((item) => item.confidence === 'LOW'), suppressed };
 }
 
@@ -280,10 +346,11 @@ export async function runExternalResearch({ caseId, window: requestedWindow = 'd
   const queryRows = generateExternalQueries(context, metadata); const activeProvider = provider || createExternalResearchProvider();
   const baseResult = { caseId, provider: activeProvider.name, researchedAt: new Date().toISOString(), researchVersion: EXTERNAL_RESEARCH_VERSION, researchWindow: context.window, queries: queryRows, cacheHit: false };
   const execution = await executeExternalResearchPlan({ queryRows, provider: activeProvider, context, metadata });
-  const { raw, partialErrors, status } = execution; const normalized = execution;
-  const result = { ...baseResult, status, findings: normalized.findings, summary: { totalFindings: normalized.findings.length, highConfidence: normalized.findings.filter((item) => item.confidence === 'HIGH').length, officialSources: normalized.findings.filter((item) => item.sourceType === SOURCE_TYPES.OFFICIAL_PROTOCOL).length, queryFailures: partialErrors.length, resultCount: raw.length, suppressed: normalized.suppressed.length }, partialErrors, suppressed: normalized.suppressed, error: status === 'FAILED' ? (activeProvider.configured === false ? 'External research provider is not configured.' : 'The external research provider did not complete any query.') : null };
+  const { raw, partialErrors, queryDiagnostics, status } = execution; const normalized = execution;
+  const auditedQueries = queryDiagnostics.length ? queryDiagnostics : queryRows;
+  const result = { ...baseResult, queries: auditedQueries, status, findings: normalized.findings, summary: { totalFindings: normalized.findings.length, highConfidence: normalized.findings.filter((item) => item.confidence === 'HIGH').length, officialSources: normalized.findings.filter((item) => item.sourceType === SOURCE_TYPES.OFFICIAL_PROTOCOL).length, queryFailures: partialErrors.length, resultCount: raw.length, suppressed: normalized.suppressed.length }, partialErrors, suppressed: normalized.suppressed, error: status === 'FAILED' ? (activeProvider.configured === false ? 'External research provider is not configured.' : 'The external research provider did not complete any query.') : null };
   console.info('External research run', { caseId, protocolSlug: context.protocol.slug, provider: activeProvider.name, queryCount: queryRows.length, rawResultCount: raw.length, candidateCount: raw.length - normalized.suppressed.length, findingCount: normalized.findings.length, cacheHit: false, failedQueries: partialErrors.length, status });
   if (!persist) return result;
-  try { return await persistRun({ context, providerName: activeProvider.name, status, queryRows, findings: normalized.findings, partialErrors, suppressed: normalized.suppressed, rawResultCount: raw.length }, sql); }
+  try { return await persistRun({ context, providerName: activeProvider.name, status, queryRows: auditedQueries, findings: normalized.findings, partialErrors, suppressed: normalized.suppressed, rawResultCount: raw.length }, sql); }
   catch (error) { if (/does not exist|undefined table|relation|column .* does not exist/i.test(error.message || '')) throw new Error('External research storage is not ready. Run database migrations.'); throw error; }
 }

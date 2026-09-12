@@ -1,6 +1,7 @@
 import { getDailyResearchFeed, updateResearchCaseStatus } from '../../server/researchFeedService.js';
 import { getResearchCaseDetail } from '../../server/researchCaseDetailService.js';
 import { getLatestExternalResearch, runExternalResearch } from '../../server/externalResearchService.js';
+import { validResearchCaseId } from '../../server/researchCasePersistence.js';
 
 function body(req) {
   if (!req.body) return {};
@@ -12,8 +13,9 @@ export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
       if (req.query.caseId) {
+        if (!validResearchCaseId(req.query.caseId)) return res.status(400).json({ error: 'Invalid research case id', reason: 'INVALID_CASE_ID' });
         const detail = await getResearchCaseDetail(req.query.caseId);
-        if (!detail) return res.status(404).json({ error: 'Research case not found' });
+        if (detail?.unavailable) return res.status(410).json(detail);
         return res.status(200).json({ ...detail, externalResearch: await getLatestExternalResearch(req.query.caseId) });
       }
       return res.status(200).json(await getDailyResearchFeed({ limit: req.query.limit, status: req.query.status }));
@@ -25,10 +27,10 @@ export default async function handler(req, res) {
     }
     if (req.method !== 'PATCH') return res.status(405).json({ error: 'Method not allowed' });
     const { caseId, status } = body(req);
-    const feed = await getDailyResearchFeed({ limit: 20, status: 'all' });
-    const item = feed.cases.find((candidate) => candidate.id === caseId);
-    if (!item) return res.status(404).json({ error: 'Research case not found for the current canonical snapshot' });
-    const saved = await updateResearchCaseStatus({ caseId, protocolId: item.protocol.id, snapshotDate: item.snapshotDate, status });
+    if (!validResearchCaseId(caseId)) return res.status(400).json({ error: 'Invalid research case id', reason: 'INVALID_CASE_ID' });
+    const detail = await getResearchCaseDetail(caseId);
+    if (detail?.unavailable) return res.status(410).json(detail);
+    const saved = await updateResearchCaseStatus({ caseId, protocolId: detail.protocol.id, snapshotDate: detail.snapshot.date, status });
     return res.status(200).json({ id: caseId, status: saved });
   } catch (error) {
     if (error.message?.startsWith('Invalid')) return res.status(400).json({ error: error.message });

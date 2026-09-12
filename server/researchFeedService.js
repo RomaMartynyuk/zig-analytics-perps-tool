@@ -2,6 +2,8 @@ import { getSql } from './db.js';
 import { getSignals } from './analyticsService.js';
 import { getVolumeOiAnalysis } from './analyticsService.js';
 import { snapshotDateKey, toValidNumber } from './analyticsMath.js';
+import { buildResearchCaseDetailPayload } from './researchCaseDetailService.js';
+import { persistResearchCases } from './researchCasePersistence.js';
 
 export const RESEARCH_STATUSES = new Set(['IGNORED', 'WATCHING', 'RESEARCHING']);
 const SEVERITY_WEIGHT = { extreme: 3, high: 2, medium: 1, low: 0 };
@@ -202,24 +204,26 @@ export async function updateResearchCaseStatus({ caseId, protocolId, snapshotDat
 }
 
 async function getSnapshotDetails(snapshotDate, sql) {
-  if (!snapshotDate) return new Map();
-  const [allRows, analysis] = await Promise.all([
-    sql.query(`SELECT p.slug, s.snapshot_date, s.volume_24h, s.open_interest, s.tvl, s.markets_count, s.data_source
+  if (!snapshotDate) return { protocolSnapshots: new Map(), historicalRows: [], totalProtocols: 0 };
+  const [allRows, analysis, totalRows] = await Promise.all([
+    sql.query(`SELECT p.id, p.slug, p.name, s.snapshot_date, s.captured_at, s.volume_24h, s.open_interest, s.tvl, s.markets_count, s.data_source
       FROM protocols p LEFT JOIN protocol_daily_snapshots s ON s.protocol_id = p.id
       WHERE p.is_active = TRUE ORDER BY p.slug, s.snapshot_date ASC NULLS FIRST`),
     getVolumeOiAnalysis(sql),
+    sql`SELECT COUNT(*)::int AS count FROM protocols WHERE is_active = TRUE`,
   ]);
   // PostgreSQL DATE can arrive as a timezone-shifted JS Date. Select using
   // the same UTC canonical key as Signals, never a browser/local date cast.
   const rows = allRows.filter((row) => snapshotDateKey(row.snapshot_date) === snapshotDate);
   const paired = new Map((analysis.protocols || []).map((item) => [item.slug, item]));
-  return new Map(rows.map((row) => {
+  const protocolSnapshots = new Map(rows.map((row) => {
     const item = paired.get(row.slug);
     return [row.slug, {
       volume24h: toValidNumber(row.volume_24h), openInterest: toValidNumber(row.open_interest), tvl: toValidNumber(row.tvl), marketsCount: toValidNumber(row.markets_count), dataSource: row.data_source || null,
       volumeShare: item?.volumeShare ?? null, oiShare: item?.openInterestShare ?? null, volumeOiRatio: item?.volumeOiRatio ?? null,
     }];
   }));
+  return { protocolSnapshots, historicalRows: allRows.filter((row) => row.snapshot_date), totalProtocols: Number(totalRows[0]?.count || 0) };
 }
 
 export async function getDailyResearchFeed({ limit = DEFAULT_LIMIT, status = 'active' } = {}, sql = getSql()) {
@@ -227,6 +231,14 @@ export async function getDailyResearchFeed({ limit = DEFAULT_LIMIT, status = 'ac
   const signalResult = await getSignals({ period: 'all', category: 'all', limit: 20, diagnostic: true }, sql);
   const candidateFeed = buildDailyResearchFeed(signalResult, { limit: 20, status: 'all' });
   const ids = candidateFeed.cases.map((item) => item.id);
-  const [statuses, protocolSnapshots] = await Promise.all([getResearchCaseStatuses(ids, sql), getSnapshotDetails(signalResult.snapshotDate, sql)]);
-  return buildDailyResearchFeed(signalResult, { statuses, limit, status: normalizedStatus, protocolSnapshots });
+  const [statuses, snapshotData] = await Promise.all([getResearchCaseStatuses(ids, sql), getSnapshotDetails(signalResult.snapshotDate, sql)]);
+  const feed = buildDailyResearchFeed(signalResult, { statuses, limit, status: normalizedStatus, protocolSnapshots: snapshotData.protocolSnapshots });
+  try {
+    const details = feed.cases.map((caseItem) => buildResearchCaseDetailPayload({ caseItem, feedCases: candidateFeed.cases, historicalRows: snapshotData.historicalRows, totalProtocols: snapshotData.totalProtocols }));
+    feed.diagnostics.persistence = await persistResearchCases(details, sql);
+  } catch (error) {
+    console.error('Research Case persistence failed; returning generated feed', { error: error.message, caseCount: feed.cases.length });
+    feed.diagnostics.persistence = { attempted: feed.cases.length, valid: 0, error: error.message };
+  }
+  return feed;
 }

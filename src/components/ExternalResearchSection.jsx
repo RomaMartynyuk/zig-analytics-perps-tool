@@ -70,8 +70,7 @@ export default function ExternalResearchSection({ caseItem, initialResearch, onC
       {!findings.length && <div className="external-empty"><strong>No strong external context found.</strong><span>No sufficiently relevant verified events were found within the selected research window.</span></div>}
       {findings.length > 0 && <>
         <ResearchTimeline findings={findings} caseItem={caseItem} />
-        <div className="external-findings">{findings.filter((item) => item.confidence !== 'LOW').map((item) => <FindingCard key={item.id || item.url} finding={item} />)}</div>
-        {findings.some((item) => item.confidence === 'LOW') && <details className="external-low-confidence"><summary>Low-confidence context</summary><div className="external-findings">{findings.filter((item) => item.confidence === 'LOW').map((item) => <FindingCard key={item.id || item.url} finding={item} />)}</div></details>}
+        <div className="external-findings">{findings.map((item) => <FindingCard key={item.id || item.url} finding={item} />)}</div>
       </>}
       <details className="external-queries"><summary>Research details</summary><span>Provider: {visibleResearch.provider}</span><span>Results reviewed: {visibleResearch.summary?.resultCount ?? '—'}</span><span>Suppressed: {visibleResearch.summary?.suppressed ?? '—'}</span><span>Query failures: {visibleResearch.summary?.queryFailures ?? 0}</span>{(visibleResearch.queries || []).map((item) => <span key={item.query}>{item.query}</span>)}</details>
     </>}

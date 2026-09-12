@@ -34,7 +34,7 @@ test('external research anchors default windows to canonical UTC snapshot date a
 test('official, temporally aligned evidence ranks above secondary and old evidence is excluded', () => {
   const normalized = normalizeExternalResults([
     { title: 'Alpha launches trading competition', url: 'https://alpha.example/posts/campaign', sourceUrl: 'https://alpha.example/posts/campaign', sourceName: 'Alpha', publishedAt: '2026-09-02', summary: 'Alpha trading competition', topic: 'trading competition', category: 'TRADING_CAMPAIGN' },
-    { title: 'Alpha campaign coverage', url: 'https://coindesk.com/alpha-campaign', sourceName: 'CoinDesk', publishedAt: '2026-08-31', summary: 'Alpha campaign', topic: 'trading competition', category: 'TRADING_CAMPAIGN' },
+    { title: 'Alpha trading campaign coverage', url: 'https://coindesk.com/alpha-campaign', sourceName: 'CoinDesk', publishedAt: '2026-08-31', summary: 'Alpha exchange trading campaign', topic: 'trading competition', category: 'TRADING_CAMPAIGN' },
     { title: 'Alpha old release', url: 'https://alpha.example/posts/old', sourceUrl: 'https://alpha.example/posts/old', sourceName: 'Alpha', publishedAt: '2026-05-01', summary: 'Alpha old release', topic: 'product update', category: 'PRODUCT_UPDATE' },
   ], context, metadata);
   assert.equal(normalized.findings.length, 2);
@@ -58,7 +58,7 @@ test('duplicate coverage merges into one event with supporting sources', () => {
 test('irrelevant or malformed results do not break valid normalized events', () => {
   const normalized = normalizeExternalResults([
     { title: '', url: 'javascript:alert(1)', publishedAt: '2026-09-03', topic: 'product update' },
-    { title: 'Alpha product update announced', url: 'https://unknown.example/update', publishedAt: '2026-09-03', summary: '', topic: 'product update', category: 'PRODUCT_UPDATE' },
+    { title: 'Alpha trading platform product update announced', url: 'https://alpha.example/update', publishedAt: '2026-09-03', summary: '', topic: 'product update', category: 'PRODUCT_UPDATE' },
   ], context, metadata);
   assert.equal(normalized.findings.length, 1);
   assert.equal(normalized.findings[0].causalClaim, false);
@@ -85,6 +85,7 @@ test('market-share plans add at most one dynamic competitor query', () => {
   assert.equal(queries.filter((item) => item.scope === 'competitor').length, 1);
   assert.ok(queries.length <= 7);
   assert.match(queries.at(-1).query, /Beta/);
+  assert.equal(queries.at(-1).competitorName, 'Beta');
   assert.equal(queries[0].topic, 'product update');
 });
 
@@ -101,6 +102,9 @@ test('run status distinguishes zero results, partial failure, and provider outag
   const noResults = await executeExternalResearchPlan({ queryRows: [{ query: 'Alpha update', topic: 'product update', scope: 'web' }], provider: { name: 'mock', configured: true, search: async () => [] }, context, metadata });
   assert.equal(noResults.status, 'COMPLETED');
   assert.deepEqual(noResults.findings, []);
+  assert.equal(noResults.queryDiagnostics[0].resultCount, 0);
+  assert.equal(noResults.queryDiagnostics[0].status, 'COMPLETED');
+  assert.ok(Number.isFinite(noResults.queryDiagnostics[0].durationMs));
 });
 
 test('partial provider failure preserves successful normalized findings', async () => {
@@ -133,10 +137,47 @@ test('Tavily provider sends canonical date bounds and key only in authorization 
 test('cache lookup is scoped by case, window, research version, and cacheable status', async () => {
   const calls = [];
   const sql = { query: async (query, values) => { calls.push({ query, values }); return []; } };
-  const result = await getLatestExternalResearch(context.case.id, sql, { windowKey: 'default', researchVersion: 'v2', cacheableOnly: true });
+  const result = await getLatestExternalResearch(context.case.id, sql, { windowKey: 'default', researchVersion: 'v3', cacheableOnly: true });
   assert.equal(result, null);
   assert.match(calls[0].query, /window_key/);
   assert.match(calls[0].query, /research_version/);
   assert.match(calls[0].query, /COMPLETED.*PARTIAL/);
-  assert.deepEqual(calls[0].values, [context.case.id, 'default', 'v2']);
+  assert.deepEqual(calls[0].values, [context.case.id, 'default', 'v3']);
+});
+
+test('generic relevance gates suppress incidental identity, broad topics, and low-information pages', () => {
+  const calibratedMetadata = { ...metadata, identityTerms: ['ALP'] };
+  const normalized = normalizeExternalResults([
+    { title: 'Bitcoin ETF inflows accelerate', url: 'https://coindesk.com/markets/bitcoin-etf', publishedAt: '2026-09-03', summary: 'Alpha is mentioned in a long market roundup.', topic: 'product update', scope: 'web' },
+    { title: 'Cash incentive announced for electric heavy vehicles', url: 'https://reuters.com/world/transport-incentive', publishedAt: '2026-09-03', summary: 'The alpha phase of a transport program begins.', topic: 'incentives', scope: 'web' },
+    { title: 'Alpha token price and market data', url: 'https://example.com/currencies/alpha', publishedAt: '2026-09-03', summary: 'Alpha price, volume and market statistics.', topic: 'new markets', scope: 'web' },
+    { title: 'Alpha launches a new perpetual trading market', url: 'https://unknown.example/alpha-launch', publishedAt: '2026-09-03', summary: 'Alpha exchange launched a perpetual market.', topic: 'new markets', scope: 'web' },
+  ], context, calibratedMetadata);
+  assert.equal(normalized.findings.length, 0);
+  assert.ok(normalized.suppressed.some((item) => item.reason === 'topic_mismatch'));
+  assert.ok(normalized.suppressed.some((item) => item.reason === 'low_source_confidence' || item.reason === 'low_information_page'));
+});
+
+test('competitor candidates must match the intended competitor and a concrete protocol event', () => {
+  const competitorContext = { ...context, competitors: [{ slug: 'beta', name: 'Beta' }] };
+  const normalized = normalizeExternalResults([
+    { title: 'Gamma launches a new trading market', url: 'https://coindesk.com/gamma-market', publishedAt: '2026-09-03', summary: 'Gamma exchange announced the launch.', topic: 'competitor event', scope: 'competitor', competitorSlug: 'beta', competitorName: 'Beta' },
+    { title: 'Beta quarterly brand update', url: 'https://coindesk.com/beta-brand', publishedAt: '2026-09-03', summary: 'Beta published new colors and a logo.', topic: 'competitor event', scope: 'competitor', competitorSlug: 'beta', competitorName: 'Beta' },
+    { title: 'Beta launches a new perpetual trading market', url: 'https://coindesk.com/beta-perpetual', publishedAt: '2026-09-03', summary: 'Beta exchange announced a new perpetual market.', topic: 'competitor event', scope: 'competitor', competitorSlug: 'beta', competitorName: 'Beta' },
+  ], competitorContext, metadata);
+  assert.equal(normalized.findings.length, 1);
+  assert.match(normalized.findings[0].title, /perpetual/i);
+  assert.ok(normalized.suppressed.some((item) => item.reason === 'competitor_mismatch'));
+  assert.ok(normalized.suppressed.some((item) => ['topic_mismatch', 'market_context_mismatch'].includes(item.reason)));
+});
+
+test('persisted PostgreSQL DATE objects preserve the exact research window', async () => {
+  let call = 0;
+  const sql = { query: async () => {
+    call += 1;
+    if (call === 1) return [{ id: 7, case_id: context.case.id, provider: 'tavily', status: 'COMPLETED', created_at: new Date('2026-09-05T12:00:00Z'), research_version: 'v3', window_start: new Date('2026-08-28T00:00:00Z'), window_end: new Date('2026-09-05T00:00:00Z'), window_key: 'default', queries_json: [], summary_json: {} }];
+    return [];
+  } };
+  const result = await getLatestExternalResearch(context.case.id, sql);
+  assert.deepEqual(result.researchWindow, { from: '2026-08-28', to: '2026-09-05', key: 'default' });
 });

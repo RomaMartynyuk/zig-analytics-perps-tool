@@ -18,7 +18,7 @@ console.log('\nWINDOW');
 console.log(`Start: ${result.researchWindow.from}`);
 console.log(`End: ${result.researchWindow.to}`);
 console.log('\nSEARCH PLAN');
-result.queries.forEach((query, index) => console.log(`${index + 1}. ${query.query}${query.scope === 'official' ? ' [official-domain constrained]' : ''}`));
+result.queries.forEach((query, index) => console.log(`${index + 1}. ${query.query}${query.scope === 'official' ? ' [official-domain constrained]' : ''}${query.status ? ` · ${query.status} · ${query.resultCount} result(s)${query.durationMs == null ? '' : ` · ${query.durationMs}ms`}` : ''}`));
 console.log('\nPROVIDER');
 console.log(`${result.provider} · ${result.status}`);
 console.log('\nRAW RESULTS');
