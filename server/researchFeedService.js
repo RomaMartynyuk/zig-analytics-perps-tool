@@ -4,6 +4,7 @@ import { getVolumeOiAnalysis } from './analyticsService.js';
 import { snapshotDateKey, toValidNumber } from './analyticsMath.js';
 import { buildResearchCaseDetailPayload } from './researchCaseDetailService.js';
 import { persistResearchCases } from './researchCasePersistence.js';
+import { getSignalLifecycle, lifecycleFeedAdjustment } from './signalLifecycleService.js';
 
 export const RESEARCH_STATUSES = new Set(['IGNORED', 'WATCHING', 'RESEARCHING']);
 const SEVERITY_WEIGHT = { extreme: 3, high: 2, medium: 1, low: 0 };
@@ -133,7 +134,7 @@ function statusAllows(item, filter) {
 }
 
 function rankCases(cases, limit) {
-  const ranked = cases.slice().sort((left, right) => right.score - left.score || left.protocol.slug.localeCompare(right.protocol.slug) || left.family.localeCompare(right.family));
+  const ranked = cases.slice().sort((left, right) => (right.feedPriorityScore ?? right.score) - (left.feedPriorityScore ?? left.score) || right.score-left.score || left.protocol.slug.localeCompare(right.protocol.slug) || left.family.localeCompare(right.family));
   const selected = []; const deferred = []; const suppressed = []; const counts = new Map();
   for (const item of ranked) {
     const count = counts.get(item.protocol.slug) || 0;
@@ -153,7 +154,7 @@ function rankCases(cases, limit) {
   return { selected: chosen, suppressed };
 }
 
-export function buildDailyResearchFeed(signalResult, { statuses = new Map(), limit = DEFAULT_LIMIT, status = 'active', protocolSnapshots = new Map() } = {}) {
+export function buildDailyResearchFeed(signalResult, { statuses = new Map(), lifecycles = new Map(), limit = DEFAULT_LIMIT, status = 'active', protocolSnapshots = new Map() } = {}) {
   // Signal Engine keeps one primary signal per semantic family in its normal
   // response. Its diagnostic semantic duplicates are already-calibrated
   // supporting observations, so Feed can attach them to the case without
@@ -166,7 +167,7 @@ export function buildDailyResearchFeed(signalResult, { statuses = new Map(), lim
     const key = `${signal.protocolSlug}:${signal.period || 'current'}:${safeFamily(signal)}`;
     const group = groups.get(key) || { signals: [] }; group.signals.push(signal); groups.set(key, group);
   }
-  const allCases = [...groups.values()].map((group) => caseFromGroup(group, statuses));
+  const allCases = [...groups.values()].map((group) => { const item=caseFromGroup(group,statuses);const lifecycle=lifecycles.get(item.id)||null;const lifecycleAdjustment=lifecycleFeedAdjustment(lifecycle);return{...item,lifecycleState:lifecycle?.lifecycleState||null,lifecycleConfidence:lifecycle?.confidence||null,lifecycleSummary:lifecycle?.explanation||null,lifecycleAdjustment,baseSignalScore:item.score,feedPriorityScore:item.score+lifecycleAdjustment}; });
   const visible = allCases.filter((item) => statusAllows(item, status));
   const normalizedLimit = Math.max(1, Math.min(Number(limit) || DEFAULT_LIMIT, 20));
   const ranked = rankCases(visible, normalizedLimit);
@@ -232,13 +233,14 @@ export async function getDailyResearchFeed({ limit = DEFAULT_LIMIT, status = 'ac
   const candidateFeed = buildDailyResearchFeed(signalResult, { limit: 20, status: 'all' });
   const ids = candidateFeed.cases.map((item) => item.id);
   const [statuses, snapshotData] = await Promise.all([getResearchCaseStatuses(ids, sql), getSnapshotDetails(signalResult.snapshotDate, sql)]);
-  const feed = buildDailyResearchFeed(signalResult, { statuses, limit, status: normalizedStatus, protocolSnapshots: snapshotData.protocolSnapshots });
+  let lifecycles=new Map();
   try {
-    const details = feed.cases.map((caseItem) => buildResearchCaseDetailPayload({ caseItem, feedCases: candidateFeed.cases, historicalRows: snapshotData.historicalRows, totalProtocols: snapshotData.totalProtocols }));
-    feed.diagnostics.persistence = await persistResearchCases(details, sql);
+    const details = candidateFeed.cases.map((caseItem) => buildResearchCaseDetailPayload({ caseItem, feedCases: candidateFeed.cases, historicalRows: snapshotData.historicalRows, totalProtocols: snapshotData.totalProtocols }));
+    await persistResearchCases(details, sql);
+    const results=await Promise.all(candidateFeed.cases.map(async(item)=>[item.id,(await getSignalLifecycle({caseId:item.id},sql)).lifecycle]));lifecycles=new Map(results);
   } catch (error) {
-    console.error('Research Case persistence failed; returning generated feed', { error: error.message, caseCount: feed.cases.length });
-    feed.diagnostics.persistence = { attempted: feed.cases.length, valid: 0, error: error.message };
+    console.error('Research lifecycle enrichment failed; returning generated feed', { error: error.message, caseCount: candidateFeed.cases.length });
   }
+  const feed = buildDailyResearchFeed(signalResult, { statuses, lifecycles, limit, status: normalizedStatus, protocolSnapshots: snapshotData.protocolSnapshots });
   return feed;
 }

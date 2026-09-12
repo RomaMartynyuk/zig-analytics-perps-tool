@@ -60,7 +60,7 @@ export async function getSignalHistory({ caseId, period = '7d' }, sql = getSql()
   const anchorDate = snapshotDateKey(detail.snapshot.date); const days = PERIOD_DAYS[period]; const startDate = utcShift(anchorDate, -(days - 1)); const loadStart = utcShift(startDate, -90); const family = detail.case.family; const key = seriesKey(detail.protocol.slug, family);
   const started = Date.now();
   const [rows, cached] = await Promise.all([
-    sql.query(`SELECT p.id, p.slug, p.name, s.snapshot_date::text AS snapshot_date, s.volume_24h, s.open_interest, s.tvl, s.data_source FROM protocol_daily_snapshots s JOIN protocols p ON p.id=s.protocol_id WHERE s.snapshot_date BETWEEN $1::date AND $2::date ORDER BY s.snapshot_date,p.slug`, [loadStart, anchorDate]),
+    sql.query(`SELECT p.id, p.slug, p.name, s.snapshot_date::text AS snapshot_date, s.volume_24h, s.open_interest, s.tvl, s.data_source FROM protocol_daily_snapshots s JOIN protocols p ON p.id=s.protocol_id WHERE s.snapshot_date BETWEEN $1::date AND $2::date AND (p.is_active=TRUE OR p.id=$3) ORDER BY s.snapshot_date,p.slug`, [loadStart, anchorDate, detail.protocol.id]),
     sql.query(`SELECT id, evidence_json AS evidence_payload, created_at FROM signal_observations WHERE protocol_id=$1 AND series_key=$2 AND engine_version=$3 AND evaluation_mode='RETROSPECTIVE' AND snapshot_date BETWEEN $4::date AND $5::date ORDER BY snapshot_date`, [detail.protocol.id, key, SIGNAL_ENGINE_VERSION, startDate, anchorDate]),
   ]);
   const cachedByDate = new Map(cached.map((row) => [snapshotDateKey(row.evidence_payload.snapshotDate), rowToObservation(row)]));

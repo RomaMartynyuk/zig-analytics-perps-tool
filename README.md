@@ -529,7 +529,7 @@ invent external evidence, or persist a synthesis.
 ### Signal History
 
 Signal History retrospectively evaluates the current Signal Engine against
-real stored canonical daily snapshots. It answers what engine version `v2`
+real stored canonical daily snapshots. It answers what engine version `v3`
 would have observed on each historical UTC date; it does not claim that Zig
 emitted those signals live at the time. A semantic series uses
 `protocolSlug:signalFamily`, matching production family deduplication, while a
@@ -557,6 +557,34 @@ npm run check:signal-history -- edgex --period=30d
 
 Signal Lifecycle is intentionally not part of this feature. A later version
 can derive lifecycle semantics from these three-state observations.
+
+### Signal Lifecycle
+
+Signal Lifecycle v1 is derived dynamically from the canonical 30D Signal
+History window; it does not add or rewrite database rows. `NEW`, `PERSISTING`,
+`STRENGTHENING`, `WEAKENING`, and `RESOLVED` describe the Zig research pattern,
+not price direction. A latest `NOT_EVALUABLE` observation produces an
+unavailable lifecycle, never `RESOLVED`. Reappearance is represented as `NEW`
+with a `reappeared` flag.
+
+Trend uses the last three consecutive evaluable PRESENT observations. Family
+extractors compare peer-relative Volume/OI, absolute structural share gap,
+Volume-share change in percentage points, or leadership share. A 15% relative
+change (or 0.5pp for share metrics) is required to avoid noise-driven
+strengthening/weakening. Unknown families still support NEW, PERSISTING, and
+RESOLVED without inventing a strength measure. Recent data gaps reduce
+classification confidence without breaking evaluable continuity.
+
+Daily Research ranking keeps the original Signal score visible and applies a
+bounded novelty adjustment afterward: NEW and materially changing patterns
+receive a modest boost, while long stable PERSISTING patterns receive at most
+a four-point fatigue reduction. Lifecycle never admits a Signal that failed
+the Signal Engine quality threshold.
+
+```bash
+npm run check:signal-lifecycle -- edgex
+npm run check:signal-lifecycle -- --all
+```
 
 ## Next steps
 

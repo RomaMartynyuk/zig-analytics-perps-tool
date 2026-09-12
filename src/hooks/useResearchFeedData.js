@@ -29,6 +29,11 @@ export async function getResearchSignalHistory(caseId, period) {
   if (!response.ok) throw new Error('Signal History is temporarily unavailable');
   return response.json();
 }
+export async function getResearchSignalLifecycle(caseId) {
+  const response = await fetch(`/api/research/feed?${new URLSearchParams({ action: 'signal-lifecycle', caseId })}`);
+  if (!response.ok) throw new Error('Signal Lifecycle is temporarily unavailable');
+  return response.json();
+}
 
 export function useResearchCaseData(caseId) {
   const [data, setData] = useState(null); const [loading, setLoading] = useState(true); const [error, setError] = useState(null); const [reloadKey, setReloadKey] = useState(0);

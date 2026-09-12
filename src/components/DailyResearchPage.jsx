@@ -23,7 +23,7 @@ function StatusActions({ item, onUpdate, updating }) {
 function ResearchCard({ item, rank, onUpdate, updating, onOpenCase }) {
   const [expanded, setExpanded] = useState(false); const snapshot = item.marketSnapshot;
   return <article className={`research-case ${expanded ? 'is-expanded' : ''}`}>
-    <div className="research-case-top"><span className="research-rank">{String(rank).padStart(2, '0')}</span><div className="research-protocol"><img src={getLogoUrl(item.protocol.name) || ''} alt="" onError={(event) => { event.currentTarget.style.display = 'none'; }} /><strong>{item.protocol.name}</strong></div><span className={`research-severity ${item.severity}`}>{item.severity}</span><span className="research-period">{item.period}</span></div>
+    <div className="research-case-top"><span className="research-rank">{String(rank).padStart(2, '0')}</span><div className="research-protocol"><img src={getLogoUrl(item.protocol.name) || ''} alt="" onError={(event) => { event.currentTarget.style.display = 'none'; }} /><strong>{item.protocol.name}</strong></div>{item.lifecycleState && <span className={`lifecycle-badge state-${item.lifecycleState.toLowerCase()}`} title={item.lifecycleSummary || ''}>{item.lifecycleState}</span>}<span className={`research-severity ${item.severity}`}>{item.severity}</span><span className="research-period">{item.period}</span></div>
     <h2>{item.headline}</h2><p>{item.summary}</p>
     <div className="research-evidence">{item.evidence.map((entry) => <span key={entry.key}><small>{entry.label}</small><b>{entry.formatted}</b></span>)}</div>
     {item.relatedSignals.length > 0 && <span className="research-related">{item.relatedSignals.length} related observation{item.relatedSignals.length === 1 ? '' : 's'}</span>}

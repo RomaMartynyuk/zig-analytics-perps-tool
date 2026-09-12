@@ -39,7 +39,7 @@ async function getMetricRows(sql, metric, { activeOnly = false } = {}) {
 export async function getCurrentMarketShare({ metric } = {}, sql = getSql()) {
   const column = getMetricColumn(metric);
   const [latestRows, totalProtocols] = await Promise.all([
-    sql`SELECT MAX(snapshot_date) AS snapshot_date, MAX(captured_at) AS captured_at FROM protocol_daily_snapshots`,
+    sql`SELECT MAX(snapshot_date)::text AS snapshot_date, MAX(captured_at) AS captured_at FROM protocol_daily_snapshots`,
     getActiveProtocolCount(sql),
   ]);
   const snapshotDate = latestRows[0]?.snapshot_date || null;
@@ -107,7 +107,7 @@ export async function getGrowthMatrix({ period } = {}, sql = getSql()) {
 
 export async function getVolumeOiAnalysis(sql = getSql()) {
   const [latestSnapshot, totalProtocols] = await Promise.all([
-    sql`SELECT MAX(snapshot_date) AS snapshot_date, MAX(captured_at) AS captured_at FROM protocol_daily_snapshots`,
+    sql`SELECT MAX(snapshot_date)::text AS snapshot_date, MAX(captured_at) AS captured_at FROM protocol_daily_snapshots`,
     getActiveProtocolCount(sql),
   ]);
   const snapshotDate = latestSnapshot[0]?.snapshot_date || null;
@@ -125,9 +125,9 @@ export async function getVolumeOiAnalysis(sql = getSql()) {
 
 export async function getSignals({ period = 'all', category = 'all', limit, diagnostic = false } = {}, sql = getSql()) {
   const [latestRows, totalProtocols, historicalRows] = await Promise.all([
-    sql`SELECT MAX(snapshot_date) AS snapshot_date, MAX(captured_at) AS captured_at FROM protocol_daily_snapshots`,
+    sql`SELECT MAX(snapshot_date)::text AS snapshot_date, MAX(captured_at) AS captured_at FROM protocol_daily_snapshots`,
     getActiveProtocolCount(sql),
-    sql.query(`SELECT p.id, p.slug, p.name, s.snapshot_date, s.volume_24h, s.open_interest, s.tvl, s.data_source FROM protocols p LEFT JOIN protocol_daily_snapshots s ON s.protocol_id = p.id WHERE p.is_active = TRUE ORDER BY s.snapshot_date ASC NULLS FIRST, p.slug ASC`),
+    sql.query(`SELECT p.id, p.slug, p.name, s.snapshot_date::text AS snapshot_date, s.volume_24h, s.open_interest, s.tvl, s.data_source FROM protocols p LEFT JOIN protocol_daily_snapshots s ON s.protocol_id = p.id WHERE p.is_active = TRUE ORDER BY s.snapshot_date ASC NULLS FIRST, p.slug ASC`),
   ]);
   const snapshotDate = latestRows[0]?.snapshot_date || null;
   const canonicalSnapshotDate = snapshotDateKey(snapshotDate);
