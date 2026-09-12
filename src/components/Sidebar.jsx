@@ -6,6 +6,7 @@ import {
   ClipboardList,
   Percent,
   TrendingUp,
+  Eye,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -13,6 +14,7 @@ const NAV_ITEMS = [
   { id: 'predictions', label: 'Points', icon: TrendingUp },
   { id: 'funding', label: 'Funding', icon: Percent },
   { id: 'research', label: 'Daily Research', icon: ClipboardList },
+  { id: 'watchlist', label: 'Watchlist', icon: Eye },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'projects', label: 'TVL', icon: Building2 },
 ];

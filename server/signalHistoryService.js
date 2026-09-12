@@ -54,10 +54,10 @@ async function persistObservations(observations, sql) {
     ON CONFLICT (snapshot_date, protocol_id, series_key, engine_version, evaluation_mode) DO NOTHING`, [JSON.stringify(observations.map((o) => ({ snapshot_date:o.snapshotDate, protocol_id:o.protocolId, protocol_slug:o.protocolSlug, series_key:o.seriesKey, signal_family:o.signalFamily, signal_type:o.signalType, state:o.state, reason:o.notEvaluableReason, score:o.score, severity:o.severity, evidence:o, comparison:o.comparison, peer_context:o.peerContext, coverage:o.coverage, engine_version:o.engineVersion, evaluation_mode:o.evaluationMode })))]);
 }
 
-export async function getSignalHistory({ caseId, period = '7d' }, sql = getSql()) {
+export async function getSignalHistory({ caseId, period = '7d', anchorDate: anchorOverride = null }, sql = getSql()) {
   if (!validResearchCaseId(caseId) || !PERIOD_DAYS[period]) throw new Error('Invalid Signal History request');
   const detail = await getPersistedResearchCase(caseId, sql); if (!detail) throw new Error('Signal History requires a persisted Research Case');
-  const anchorDate = snapshotDateKey(detail.snapshot.date); const days = PERIOD_DAYS[period]; const startDate = utcShift(anchorDate, -(days - 1)); const loadStart = utcShift(startDate, -90); const family = detail.case.family; const key = seriesKey(detail.protocol.slug, family);
+  const anchorDate = snapshotDateKey(anchorOverride || detail.snapshot.date); const days = PERIOD_DAYS[period]; const startDate = utcShift(anchorDate, -(days - 1)); const loadStart = utcShift(startDate, -90); const family = detail.case.family; const key = seriesKey(detail.protocol.slug, family);
   const started = Date.now();
   const [rows, cached] = await Promise.all([
     sql.query(`SELECT p.id, p.slug, p.name, s.snapshot_date::text AS snapshot_date, s.volume_24h, s.open_interest, s.tvl, s.data_source FROM protocol_daily_snapshots s JOIN protocols p ON p.id=s.protocol_id WHERE s.snapshot_date BETWEEN $1::date AND $2::date AND (p.is_active=TRUE OR p.id=$3) ORDER BY s.snapshot_date,p.slug`, [loadStart, anchorDate, detail.protocol.id]),

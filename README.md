@@ -586,6 +586,30 @@ npm run check:signal-lifecycle -- edgex
 npm run check:signal-lifecycle -- --all
 ```
 
+### Research Watchlist
+
+Watchlist membership comes exclusively from the existing `WATCHING` Research
+Case status. Each case remains immutable and case-scoped, even when several
+cases belong to the same protocol. The Watchlist evaluates that semantic
+series against the latest complete canonical UTC snapshot and displays the
+original Case state separately from the current follow-up state.
+
+Migration `008_research_watchlist.sql` adds append-only daily evaluations.
+The unique `(case_id, canonical_date, engine_version, lifecycle_version)` key
+makes page refreshes idempotent, while a new canonical day creates a new row.
+Signal or Lifecycle version changes establish a fresh baseline instead of
+reporting a false research change. Unwatching removes membership only; stored
+evaluations and the original Case are retained. No external research, polling,
+notifications, or background automation is triggered by Watchlist.
+
+```bash
+
+# Evaluate WATCHING Research Cases against the latest canonical snapshot.
+# Same-day runs reuse the versioned daily evaluation.
+npm run check:watchlist
+npm run check:watchlist -- lighter
+```
+
 ## Next steps
 
 - Verify on the live deployment how many of the 16 registered exchanges

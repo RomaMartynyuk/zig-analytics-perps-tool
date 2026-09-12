@@ -16,6 +16,7 @@ import PredictionsPage from './components/PredictionsPage';
 import AnalyticsPage from './components/AnalyticsPage';
 import DailyResearchPage from './components/DailyResearchPage';
 import ProtocolResearchView from './components/ProtocolResearchView';
+import ResearchWatchlistPage from './components/ResearchWatchlistPage';
 import ProjectIcon from './components/ProjectIcon';
 
 import { formatUSD, formatPercent, formatTokenPrice } from './lib/format';
@@ -238,18 +239,19 @@ export default function App() {
   };
   const [researchCaseId, setResearchCaseId] = useState(parseResearchHash);
   const [active, setActive] = useState(() => parseResearchHash() ? 'research-case' : 'dashboard');
+  const [researchReturnPage, setResearchReturnPage] = useState('research');
 
   useEffect(() => {
     const onHashChange = () => { const caseId = parseResearchHash(); setResearchCaseId(caseId); if (caseId) setActive('research-case'); };
     window.addEventListener('hashchange', onHashChange); return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
   const changePage = (page) => { if (window.location.hash) window.history.replaceState(null, '', window.location.pathname + window.location.search); setResearchCaseId(null); setActive(page); };
-  const openCase = (caseId) => { window.location.hash = `research/case/${encodeURIComponent(caseId)}`; };
-  const closeCase = () => { window.history.replaceState(null, '', window.location.pathname + window.location.search); setResearchCaseId(null); setActive('research'); };
+  const openCase = (caseId, returnPage = 'research') => { setResearchReturnPage(returnPage); window.location.hash = `research/case/${encodeURIComponent(caseId)}`; };
+  const closeCase = () => { window.history.replaceState(null, '', window.location.pathname + window.location.search); setResearchCaseId(null); setActive(researchReturnPage); };
 
   return (
     <div className={`app-shell ${active === 'predictions' ? 'points-lab-mode' : ''}`}>
-      <Sidebar active={active === 'research-case' ? 'research' : active} onChange={changePage} />
+      <Sidebar active={active === 'research-case' ? researchReturnPage : active} onChange={changePage} />
 
       <main className="main">
         <Header />
@@ -273,7 +275,9 @@ export default function App() {
             ) : active === 'analytics' ? (
               <AnalyticsPage />
             ) : active === 'research' ? (
-              <DailyResearchPage onOpenCase={openCase} />
+              <DailyResearchPage onOpenCase={(id) => openCase(id, 'research')} />
+            ) : active === 'watchlist' ? (
+              <ResearchWatchlistPage onOpenCase={(id) => openCase(id, 'watchlist')} />
             ) : active === 'research-case' ? (
               <ProtocolResearchView caseId={researchCaseId} onBack={closeCase} />
             ) : (

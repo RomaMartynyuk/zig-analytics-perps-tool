@@ -6,6 +6,12 @@ export function useResearchFeedData(status) {
   return { data, loading, error, refetch: () => setReloadKey((key) => key + 1) };
 }
 
+export function useResearchWatchlist(enabled = true) {
+  const [data, setData] = useState(null); const [loading, setLoading] = useState(true); const [error, setError] = useState(null); const [reloadKey, setReloadKey] = useState(0);
+  useEffect(() => { if (!enabled) { setLoading(false); return undefined; } const controller = new AbortController(); (async () => { setLoading(true); setError(null); try { const response = await fetch('/api/research/feed?action=watchlist', { signal: controller.signal }); if (!response.ok) throw new Error(); setData(await response.json()); } catch (err) { if (err.name !== 'AbortError') setError(err); } finally { if (!controller.signal.aborted) setLoading(false); } })(); return () => controller.abort(); }, [enabled, reloadKey]);
+  return { data, loading, error, refetch: () => setReloadKey((key) => key + 1) };
+}
+
 export async function setResearchCaseStatus(caseId, status) {
   const response = await fetch('/api/research/feed', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ caseId, status }) });
   if (!response.ok) throw new Error('Unable to update research status');

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { formatUSD } from '../lib/format';
 import { getLogoUrl } from '../lib/projectLogos';
-import { setResearchCaseStatus, useResearchCaseData } from '../hooks/useResearchFeedData';
+import { setResearchCaseStatus, useResearchCaseData, useResearchWatchlist } from '../hooks/useResearchFeedData';
 import AnalyticsCredit from './AnalyticsCredit';
 import ExternalResearchSection from './ExternalResearchSection';
 import ResearchSynthesisSection from './ResearchSynthesisSection';
@@ -19,6 +19,8 @@ function StatusActions({ item, onSave, saving }) { return <div className="resear
 function MetricCard({ label, metric, type = 'usd' }) { return <div className="protocol-metric-card"><span>{label}</span><strong>{compact(metric?.value, type)}</strong>{metric?.source && <small title={`Source: ${metric.source}`}>Source available</small>}</div>; }
 
 function PeerCard({ label, context, type = 'usd' }) { return <div className="protocol-peer-card"><strong>{label}</strong><span>{compact(context?.value, type)}</span><div className="protocol-peer-stats"><small>Rank <b>{context?.rank ? `#${context.rank} / ${context.eligible}` : '—'}</b></small><small>Median <b>{compact(context?.median, type)}</b></small><small>Percentile <b>{percentile(context?.percentile)}</b></small></div>{context?.percentile != null && <i><b style={{ width: `${Math.max(3, context.percentile * 100)}%` }} /></i>}</div>; }
+
+function CurrentWatchState({ caseItem }) { const {data,loading,error}=useResearchWatchlist(caseItem.status==='WATCHING'); if(caseItem.status!=='WATCHING')return null; const entry=data?.entries?.find((item)=>item.case.id===caseItem.id); return <section className="protocol-section protocol-current-watch"><span className="analytics-module-kicker">Current watch state</span>{loading&&<p>Evaluating latest canonical snapshot…</p>}{error&&<p>Current Watch State is temporarily unavailable.</p>}{entry&&<div className="current-watch-grid"><span>Original case <b>{date(entry.originalState?.canonicalDate)}</b></span><span>Current canonical <b>{date(entry.currentState?.canonicalDate)}</b></span><span>Current lifecycle <b>{entry.currentState?.lifecycleState||'—'}</b></span><span>Last change <b>{date(entry.lastMeaningfulChange?.canonicalDate)}</b></span><p>{entry.update?.explanation}</p></div>}</section>; }
 
 function HistoryChart({ detail, period, metric }) {
   const entry = detail.history.periods[period];
@@ -55,6 +57,7 @@ export default function ProtocolResearchView({ caseId, onBack }) {
       <section className="protocol-section protocol-related"><span className="analytics-module-kicker">Related observations</span>{data.relatedSignals.length ? data.relatedSignals.map((item) => <details key={item.id}><summary>{item.title} · score {item.score}</summary><span>{item.evidence?.map((evidence) => `${evidence.label}: ${evidence.formatted}`).join(' · ') || item.summary}</span></details>) : <p>No related observations for this case.</p>}{data.otherSignals.length > 0 && <><h3>Other active signals</h3>{data.otherSignals.map((item) => <p key={item.id}><b>{item.headline}</b> · {item.score}/100</p>)}</>}</section>
       <section className="protocol-section protocol-questions"><span className="analytics-module-kicker">Questions to investigate</span><div><strong>Zig can check</strong>{caseItem.questions.zigCanCheck.map((item) => <span key={item}>{item}</span>)}</div><div><strong>External research</strong>{caseItem.questions.externalResearch.map((item) => <span key={item}>{item}</span>)}</div></section>
       <SignalHistorySection caseItem={caseItem} />
+      <CurrentWatchState caseItem={caseItem} />
       <ExternalResearchSection caseItem={caseItem} initialResearch={data.externalResearch} onComplete={refetch} />
       <ResearchSynthesisSection caseItem={caseItem} initialState={data.synthesis} />
     </div><AnalyticsCredit />
