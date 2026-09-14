@@ -6,6 +6,7 @@ import { buildAndPersistResearchSynthesis, getResearchSynthesisState } from '../
 import { getSignalHistory } from '../../server/signalHistoryService.js';
 import { getSignalLifecycle } from '../../server/signalLifecycleService.js';
 import { getResearchWatchlist } from '../../server/researchWatchlistService.js';
+import { getResearchCaseTimeline } from '../../server/researchTimelineService.js';
 
 function body(req) {
   if (!req.body) return {};
@@ -17,6 +18,11 @@ export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
       if (req.query.action === 'watchlist') return res.status(200).json(await getResearchWatchlist());
+      if (req.query.action === 'timeline') {
+        if (!validResearchCaseId(req.query.caseId)) return res.status(400).json({ error: 'Invalid research case id', reason: 'INVALID_CASE_ID' });
+        try { return res.status(200).json(await getResearchCaseTimeline({ caseId: req.query.caseId })); }
+        catch (error) { if (/requires a persisted Research Case/i.test(error.message)) return res.status(410).json({ unavailable: true, reason: 'HISTORICAL_CASE_UNAVAILABLE', caseId: req.query.caseId }); throw error; }
+      }
       if (req.query.action === 'signal-history') return res.status(200).json(await getSignalHistory({ caseId: req.query.caseId, period: req.query.period || '7d' }));
       if (req.query.action === 'signal-lifecycle') return res.status(200).json(await getSignalLifecycle({ caseId: req.query.caseId }));
       if (req.query.caseId) {

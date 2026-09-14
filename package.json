@@ -19,6 +19,7 @@
     "check:signal-history": "node --env-file=.env.local scripts/check-signal-history.js",
     "check:signal-lifecycle": "node --env-file=.env.local scripts/check-signal-lifecycle.js",
     "check:watchlist": "node --env-file=.env.local scripts/check-watchlist.js",
+    "check:research-timeline": "node --env-file=.env.local scripts/check-research-timeline.js",
     "check:external-research": "node --env-file=.env.local scripts/check-external-research.js",
     "test": "node --test"
   },

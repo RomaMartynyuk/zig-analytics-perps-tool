@@ -610,6 +610,28 @@ npm run check:watchlist
 npm run check:watchlist -- lighter
 ```
 
+### Research Case Timeline
+
+Timeline v1 is a derived aggregation over immutable Research Cases, cached
+retrospective Signal observations, the existing Lifecycle derivation,
+persisted External Research runs, Synthesis revisions, and Watch evaluations.
+It does not create a duplicate event table or modify original Case evidence.
+Canonical `effectiveDate` values remain distinct from actual system-action
+`occurredAt` timestamps. Stable daily observations and no-change Watch rows
+are compressed; semantically equivalent lifecycle and Watch transitions are
+merged while retaining all source references.
+
+The range begins on the Case snapshot date and may continue through the latest
+canonical follow-up date. Earlier observations are loaded only as hidden
+Lifecycle context. Lifecycle prefixes prevent future snapshots from changing
+an earlier transition. Status history is not shown because the current status
+table stores only the latest value; no historical status events are guessed.
+
+```bash
+npm run check:research-timeline -- lighter
+npm run check:research-timeline -- research:2026-09-10:lighter:market_share_gain
+```
+
 ## Next steps
 
 - Verify on the live deployment how many of the 16 registered exchanges
