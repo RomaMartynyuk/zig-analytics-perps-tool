@@ -6,10 +6,10 @@ import ProjectIcon from './ProjectIcon';
 import { usePerpsTickers } from '../hooks/usePerpsTickers';
 import { formatTokenPrice, formatUSD } from '../lib/format';
 import { getLogoUrl } from '../lib/projectLogos';
+import { formatCountdown, getUtcWeeklySnapshotWindow } from '../lib/pointsSnapshots';
+import { calculateLighterRobinhood } from '../lib/pointsCalculator';
 
 const FALLBACK_ASSUMPTIONS = { pointsMillions: 1_000, fdvMillions: 100, userAllocationPercent: 10 };
-const LIGHTER_POINTS_PER_WEEK = 65_000;
-const LIGHTER_TOKEN_ALLOCATION = 11_000_000;
 const NUMERIC_LOGO_PATTERNS = [
   '01011010010110100101101001100101101001011010010110100110',
   '73120486917312048691731204869173120486917312048691731204',
@@ -143,6 +143,7 @@ export default function PredictionsPage() {
   const [assumptions, setAssumptions] = useState({});
   const [ownedPoints, setOwnedPoints] = useState({});
   const [lighterWeeks, setLighterWeeks] = useState(12);
+  const [snapshotNow, setSnapshotNow] = useState(() => new Date());
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [transitionDirection, setTransitionDirection] = useState('neutral');
   const [pageVisible, setPageVisible] = useState(() => document.visibilityState !== 'hidden');
@@ -152,8 +153,9 @@ export default function PredictionsPage() {
   const reduceMotion = useReducedMotion();
   const { data: tickers } = usePerpsTickers();
   const litPrice = tickers.find((ticker) => ticker.ticker === 'LIT')?.price;
-  const lighterValue = Number.isFinite(litPrice) ? LIGHTER_TOKEN_ALLOCATION * litPrice : null;
-  const lighterForecast = lighterValue == null ? null : lighterValue / (LIGHTER_POINTS_PER_WEEK * lighterWeeks);
+  const lighterCalculation = calculateLighterRobinhood({ litPrice, weeks: lighterWeeks, personalPoints: ownedPoints.Lighter });
+  const lighterValue = lighterCalculation.campaignValue;
+  const lighterForecast = lighterCalculation.pointPrice;
   const perps = projects.filter((project) => project.points_snapshot || ['live', 'running'].includes(project.points_status));
   const selectedProject = perps[selectedIndex];
 
@@ -164,6 +166,10 @@ export default function PredictionsPage() {
   }, []);
 
   useEffect(() => () => clearTimeout(feedbackTimer.current), []);
+  useEffect(() => {
+    const timer = setInterval(() => setSnapshotNow(new Date()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
 
   function updateAssumption(project, field, value) {
     setAssumptions((current) => ({
@@ -221,7 +227,7 @@ export default function PredictionsPage() {
   function renderCalculator(project, index) {
     if (project.name === 'Lighter') {
       const personalPoints = ownedPoints[project.name] ?? '';
-      const personalAllocation = lighterForecast == null ? null : Number(personalPoints) * lighterForecast;
+      const personalAllocation = lighterCalculation.personalAllocation;
 
       return (
         <motion.article
@@ -261,6 +267,7 @@ export default function PredictionsPage() {
             <motion.section className={`lighter-result-panel ${feedbackControl ? 'result-feedback' : ''}`} initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ ...projectTransition, delay: reduceMotion ? 0 : .16 }}>
               <span className="result-eyebrow">Your weekly forecast</span>
               <AnimatedResult className="primary-point-result">{formatTokenPrice(lighterForecast)}</AnimatedResult>
+              {lighterForecast == null && <small>Live LIT price is unavailable.</small>}
               <small>per point · {lighterWeeks} weeks</small>
               <div className="lighter-result-equation">
                 <span>Campaign value</span>
@@ -277,6 +284,7 @@ export default function PredictionsPage() {
     const userForecast = (values.fdvMillions * (values.userAllocationPercent / 100)) / values.pointsMillions;
     const personalPoints = ownedPoints[project.name] ?? '';
     const personalAllocation = Number(personalPoints) * userForecast;
+    const arcusWindow = project.name === 'Arcus' ? getUtcWeeklySnapshotWindow(project, snapshotNow) : null;
 
     return (
       <motion.article
@@ -288,6 +296,11 @@ export default function PredictionsPage() {
         <ProjectLogoBackdrop project={project} />
         <motion.section className="prediction-parameters" initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ ...projectTransition, delay: reduceMotion ? 0 : .05 }}>
           <ProjectHeader project={project} index={index} />
+          {arcusWindow && <div className="arcus-snapshot-context">
+            <span>Weekly points snapshot · Wednesday 19:00 UTC</span>
+            <strong>Next: {new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(arcusWindow.next)} UTC</strong>
+            <small>{formatCountdown(arcusWindow.next, snapshotNow)} remaining · Previous: {new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' }).format(arcusWindow.previous)}</small>
+          </div>}
           <div className="prediction-controls">
             <label className={parameterClass(`${project.name}-points`)}>
               <span>Total points <strong>{formatPoints(values.pointsMillions)}</strong></span>

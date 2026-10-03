@@ -159,6 +159,10 @@ in sync if you add a new exchange with a similarly mismatched name.
 
 ## Configuring weekly points snapshots
 
+Arcus uses the central `points_snapshot` configuration with Wednesday 19:00 UTC. Point Value Lab displays the previous and next UTC boundary and a live countdown. The snapshot is a separate event from any later points distribution; no distribution time is assumed.
+
+Feature 7.5 added verified mainnet market adapters for Bullet, Perpl and N1. The capability and unit audit, exclusions and limitations are in [docs/protocol-integrations-7.5.md](docs/protocol-integrations-7.5.md). Read-only diagnostics: `npm run check:bullet`, `npm run check:perpl`, `npm run check:n1`. No database migration or extra Vercel Function is required.
+
 Add `points_snapshot` to the relevant project in
 `src/data/projects.json`. `weekday` is required and must be an English weekday:
 `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`, or

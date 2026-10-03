@@ -10,6 +10,7 @@
   },
   {
     "name": "TrueNorth",
+    "is_active": false,
     "category": "AI + Trading",
     "tier": 1,
     "defillama_slug": "truenorth",
@@ -23,7 +24,12 @@
     "tier": 1,
     "defillama_slug": "arcus",
     "slug_verified": true,
-    "points_status": "not_live",
+    "points_status": "running",
+    "points_snapshot": {
+      "weekday": "wednesday",
+      "time": "19:00",
+      "timezone": "UTC"
+    },
     "notes": "Built by ex-dYdX team w/ Robinhood Crypto, on Robinhood Chain. TVL confirmed live on DefiLlama (~$20M)",
     "external_research": { "website": "https://arcus.xyz", "docs": "https://docs.arcus.xyz" }
   },
@@ -155,7 +161,7 @@
     "defillama_slug": "01-exchange",
     "slug_verified": true,
     "points_status": "live",
-    "notes": "N1 is currently on devnet. The official Nord bulk API supplies its live devnet perp volume and OI; TVL still does not map to the /protocol endpoint used here.",
+    "notes": "Nord mainnet public market data is available at api-mainnet.n1.xyz; Zig uses the /info market registry and /markets/live for 24h quote volume and base-denominated OI.",
     "points_snapshot": {
       "weekday": "friday",
       "time": "00:00"
@@ -275,7 +281,28 @@
     }
   },
   {
+    "name": "Perpl",
+    "category": "Perps",
+    "tier": 3,
+    "defillama_slug": "perpl",
+    "slug_verified": false,
+    "points_status": "not_live",
+    "notes": "Independent Monad perpetual DEX. Mainnet public context contains 24h collateral-notional volume and base-asset open interest.",
+    "external_research": { "website": "https://perpl.xyz", "docs": "https://docs.perpl.xyz" }
+  },
+  {
+    "name": "Bullet",
+    "category": "Perps",
+    "tier": 3,
+    "defillama_slug": "bullet",
+    "slug_verified": false,
+    "points_status": "not_live",
+    "notes": "Independent perp exchange. Bullet Trading API exposes public mainnet per-market 24h quote volume and base-asset open interest.",
+    "external_research": { "website": "https://bullet.xyz", "docs": "https://docs.bullet.xyz" }
+  },
+  {
     "name": "Tread.fi",
+    "is_active": false,
     "category": "Trading execution",
     "tier": 3,
     "defillama_slug": "tread-fi",

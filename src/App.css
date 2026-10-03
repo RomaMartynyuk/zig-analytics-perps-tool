@@ -848,6 +848,11 @@
 .prediction-workspace .prediction-card-head h2 + span { color: #918b95; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
 .prediction-workspace .prediction-tier { border: 1px solid rgba(255,255,255,.09); background: transparent; color: #827c85; }
 .points-lab-mode .prediction-controls { gap: 34px; margin-top: 58px; padding: 0; }
+.arcus-snapshot-context { display:grid; gap:5px; margin-top:24px; padding:13px 15px; border:1px solid rgba(255,40,107,.22); border-radius:10px; background:rgba(255,40,107,.055); }
+.arcus-snapshot-context span { color:#ff82a8; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; }
+.arcus-snapshot-context strong { color:#fff; font-size:14px; }
+.arcus-snapshot-context small { color:#aaa4ad; font-size:10px; }
+.arcus-snapshot-context + .prediction-controls { margin-top:32px; }
 .points-lab-mode .parameter-row { position: relative; isolation: isolate; }
 .points-lab-mode .parameter-row::after { position: absolute; z-index: 0; inset: -13px -15px; border: 1px solid transparent; border-radius: 9px; background: linear-gradient(90deg, rgba(255,40,107,0), rgba(255,40,107,.14), rgba(255,40,107,0)); content: ''; opacity: 0; pointer-events: none; }
 .points-lab-mode .parameter-row > * { position: relative; z-index: 1; }

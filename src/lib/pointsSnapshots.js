@@ -88,6 +88,22 @@ export function getRecurringSnapshot(project, now = new Date()) {
   return { ...project, isPointsDay: false, scheduledAt };
 }
 
+/** Exact previous and next UTC weekly boundaries. Snapshot and any later
+ * points distribution are separate events; this only models the snapshot. */
+export function getUtcWeeklySnapshotWindow(project, now = new Date()) {
+  const schedule = project?.points_snapshot;
+  if (!schedule || (schedule.timezone || 'UTC') !== 'UTC' || !Number.isFinite(now.getTime())) return null;
+  const weekday = WEEKDAYS[String(schedule.weekday).toLowerCase()];
+  const time = parseTime(schedule.time);
+  if (weekday == null || !time) return null;
+  const dayStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const daysSince = (now.getUTCDay() - weekday + 7) % 7;
+  let previousMs = dayStart - daysSince * 86400000 + time.hours * 3600000 + time.minutes * 60000;
+  if (previousMs > now.getTime()) previousMs -= 7 * 86400000;
+  const nextMs = previousMs + 7 * 86400000;
+  return { previous: new Date(previousMs), next: new Date(nextMs), remainingMs: nextMs - now.getTime() };
+}
+
 export function formatCountdown(targetDate, now = new Date()) {
   const remainingSeconds = Math.max(0, Math.floor((targetDate.getTime() - now.getTime()) / 1000));
   const days = Math.floor(remainingSeconds / 86400);

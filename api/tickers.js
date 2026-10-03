@@ -10,6 +10,16 @@ const TICKERS = [
   { name: 'GRVT', ticker: 'GRVT', coinId: 'grvt' },
 ];
 
+export function normalizeTickers(prices) {
+  return TICKERS.flatMap(({ name, ticker, coinId }) => {
+    const quote = prices?.[coinId];
+    const price = quote?.usd == null ? null : Number(quote.usd);
+    const change = quote?.usd_24h_change == null ? null : Number(quote.usd_24h_change);
+    if (!Number.isFinite(price) || price <= 0) return [];
+    return [{ name, ticker, price, change: Number.isFinite(change) ? change : null }];
+  }).sort((a, b) => b.price - a.price);
+}
+
 export default async function handler(req, res) {
   const ids = TICKERS.map((token) => token.coinId).join(',');
   const url = new URL('https://api.coingecko.com/api/v3/simple/price');
@@ -28,13 +38,7 @@ export default async function handler(req, res) {
     }
 
     const prices = await upstream.json();
-    const tickers = TICKERS.flatMap(({ name, ticker, coinId }) => {
-      const quote = prices?.[coinId];
-      const price = Number(quote?.usd);
-      const change = Number(quote?.usd_24h_change);
-      if (!Number.isFinite(price) || !Number.isFinite(change)) return [];
-      return [{ name, ticker, price, change }];
-    }).sort((a, b) => b.price - a.price);
+    const tickers = normalizeTickers(prices);
 
     // CoinGecko receives one batched call per edge refresh, not per visitor.
     res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300');

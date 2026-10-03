@@ -1,4 +1,8 @@
 import { fetchArcusMarketMetrics } from '../server/arcusAdapter.js';
+import { fetchPerplMarketMetrics } from '../server/perplAdapter.js';
+import { fetchBulletMarketMetrics } from '../server/bulletAdapter.js';
+import { fetchN1MarketMetrics } from '../server/n1Adapter.js';
+import { getActiveProtocols } from '../server/protocolRegistry.js';
 
 // Vercel Serverless Function — aggregate Perp Volume (24h) and Open
 // Interest across tracked exchanges, from direct exchange APIs only
@@ -497,9 +501,9 @@ async function arcusData() {
 }
 async function gmTradeData() { return { volume: null, openInterest: null }; }
 
-// N1 currently exposes only devnet metrics. Exclude them from production
-// venue totals while retaining the source in the tracked-project registry.
-async function n1Data() { return { volume: null, openInterest: null }; }
+async function n1Data() { return fetchN1MarketMetrics(fetchWithRetry); }
+async function perplData() { return fetchPerplMarketMetrics(fetchWithRetry); }
+async function bulletData() { return fetchBulletMarketMetrics(fetchWithRetry); }
 
 // ============================================================================
 // REGISTRY
@@ -526,6 +530,8 @@ const ADAPTERS = [
   { name: 'Arcus', dataSource: 'arcus_api', fetcher: arcusData },
   { name: 'GMTrade', dataSource: 'gmtrade_api', fetcher: gmTradeData },
   { name: 'N1', dataSource: 'n1_nord_api', fetcher: n1Data },
+  { name: 'Perpl', dataSource: 'perpl_api', fetcher: perplData },
+  { name: 'Bullet', dataSource: 'bullet_api', fetcher: bulletData },
 ];
 
 const UNAVAILABLE_REASONS = {
@@ -535,7 +541,6 @@ const UNAVAILABLE_REASONS = {
   Hotstuff: 'Excluded at the user’s request because its API response is unreliable.',
   TrueNorth: 'TrueNorth is an AI trading-intelligence platform, not a perp venue with its own volume/OI.',
   GMTrade: 'No public market-data endpoint has been verified.',
-  N1: 'Excluded at the user’s request: the available Nord endpoint reports devnet-only metrics.',
 };
 
 // ============================================================================
@@ -619,7 +624,8 @@ async function getAggregate() {
   const volumeSources = [];
   const openInterestSources = [];
 
-  for (const { name, dataSource } of ADAPTERS) {
+  const activeNames = new Set(getActiveProtocols().map((protocol) => protocol.metricsKey));
+  for (const { name, dataSource } of ADAPTERS.filter((adapter) => activeNames.has(adapter.name))) {
     const entry = sourceCache[name];
     if (entry?.volume != null) {
       volumeTotal += entry.volume;
@@ -668,7 +674,7 @@ export default async function handler(req, res) {
         volumeSources: agg.volumeSources,
         openInterestSources: agg.openInterestSources,
         cacheAgeMs: agg.cacheAgeMs,
-        note: '20 tracked exchanges are registered. Values are returned only when their public API and USD units have been verified; unavailable sources remain null instead of contributing guessed numbers. Refreshed at most once per 75 min per warm instance; a source that fails on a given cycle keeps its last successful value. Dashboard 7d/30d fields remain null; historical calculations are served separately from the daily-snapshot analytics layer.',
+        note: 'Tracked active venues are sourced from the central protocol registry. Unavailable metrics remain null. Refreshed at most once per 75 min per warm instance; a source that fails on a given cycle keeps its last successful value. Dashboard 7d/30d fields remain null; historical calculations are served separately from the daily-snapshot analytics layer.',
       },
     });
   } catch {
