@@ -651,3 +651,9 @@ npm run check:research-timeline -- research:2026-09-10:lighter:market_share_gain
 - Consider unifying the name mismatches between `projects.json` and
   `api/derivatives.js`'s adapter registry (currently bridged by an alias
   map, works but easy to forget when adding a new exchange)
+
+# Participation & concentration analytics
+
+The Analytics Canvas includes an additive participant module backed by migration009 and bounded historical collectors for N1, Arcus and Lighter. See [the source audit, methodology, real-data report and collection instructions](docs/participation-analytics.md). Arcus and Lighter use exact-day official notional candles for reconciliation; incomplete scans or unavailable denominators suppress public concentration. Variational currently has no documented global attributed tape, so its participant metrics remain NULL with an explicit explanation. No extra Vercel function, fake backfill or new signals are introduced.
+
+A resumable daily worker, persistent private checkpoints and a Neon singleton lease are available. See [worker setup and activation](docs/participation-worker.md). It targets completed UTC trade days at12:00UTC and must be installed on an always-on host; a Vercel deployment does **not** automatically enable it.

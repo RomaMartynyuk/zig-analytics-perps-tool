@@ -14,6 +14,8 @@
     "check:perpl": "node scripts/check-new-protocol.js perpl",
     "check:n1": "node scripts/check-new-protocol.js n1",
     "check:bullet": "node scripts/check-new-protocol.js bullet",
+    "check:participation": "node --env-file=.env.local scripts/check-participation.js",
+    "participation:worker": "node scripts/participation-worker.js",
     "check:signals": "node --env-file=.env.local scripts/check-signals.js",
     "check:research-feed": "node --env-file=.env.local scripts/check-research-feed.js",
     "check:research-case": "node --env-file=.env.local scripts/check-research-case.js",

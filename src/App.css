@@ -1492,6 +1492,16 @@
 .growth-matrix-momentum.broad_contraction { color: var(--down) !important; }
 .growth-matrix-note { margin-top: 8px; color: var(--ink-faint); font-size: 8.5px; line-height: 1.35; }
 .growth-matrix-empty { min-height: 275px; }
+.participation-concentration { grid-column: 1 / -1; min-width: 0; }
+.participation-scroll { overflow-x: auto; margin: 16px 0; }
+.participation-scroll table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 12px; }
+.participation-scroll th, .participation-scroll td { padding: 10px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.participation-scroll th:first-child { position: sticky; left: 0; background: var(--card); text-align: left; z-index: 1; }
+.participation-scroll th button { border: 0; background: transparent; color: var(--ink); cursor: pointer; font: inherit; }
+.participation-scroll th button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 3px; }
+.participation-scroll small { display: block; margin-top: 3px; font-size: 10px; color: var(--ink-soft); }
+.participation-note, .participation-method, .participation-history { font-size: 12px; line-height: 1.6; color: var(--ink-soft); }
+.participation-detail { display: grid; gap: 5px; padding: 14px; margin: 12px 0; background: var(--card-tint); border-radius: 12px; font-size: 12px; overflow-wrap: anywhere; }
 .growth-matrix-loading { margin-top: 24px; }
 .growth-matrix-progress { position: relative; display: block; width: 128px; height: 8px; overflow: hidden; border-radius: 999px; background: var(--card-tint); }
 .growth-matrix-progress i { display: block; height: 100%; border-radius: inherit; background: var(--accent-2); }

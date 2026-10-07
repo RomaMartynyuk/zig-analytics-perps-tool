@@ -1,0 +1,28 @@
+[Unit]
+Description=Zig Analytics daily participant collection
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=zig
+Group=zig
+WorkingDirectory=/opt/zig-analytics
+EnvironmentFile=/etc/zig-analytics/participation.env
+Environment=PARTICIPATION_CHECKPOINT_DIR=/var/lib/zig-participation
+ExecStart=/usr/bin/node /opt/zig-analytics/scripts/participation-worker.js
+Restart=on-failure
+RestartSec=60
+TimeoutStopSec=30
+KillMode=control-group
+StateDirectory=zig-participation
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/zig-participation
+
+[Install]
+WantedBy=multi-user.target

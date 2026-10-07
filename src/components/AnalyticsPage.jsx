@@ -4,6 +4,7 @@ import VolumeOiAnalysis from './VolumeOiAnalysis';
 import VolumeOiShareAnalysis from './VolumeOiShareAnalysis';
 import GrowthMatrix from './GrowthMatrix';
 import ZigSignals from './ZigSignals';
+import ParticipationConcentration from './ParticipationConcentration';
 
 export default function AnalyticsPage() {
   return (
@@ -23,6 +24,7 @@ export default function AnalyticsPage() {
         <VolumeOiShareAnalysis />
         <MarketShareMovers />
         <GrowthMatrix />
+        <ParticipationConcentration />
       </div>
     </section>
   );
